@@ -50,7 +50,13 @@ class ServiceControllerTest {
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(1))
-                .andExpect(jsonPath("$.content[0].name").value("Consulta inicial"));
+                .andExpect(jsonPath("$.content[0].name").value("Consulta inicial"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(true));
     }
 
     @Test

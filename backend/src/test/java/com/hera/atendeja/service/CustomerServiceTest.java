@@ -7,10 +7,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.hera.atendeja.dto.customer.CustomerCreateRequest;
+import com.hera.atendeja.dto.customer.CustomerUpdateRequest;
 import com.hera.atendeja.entity.Customer;
 import com.hera.atendeja.exception.ResourceNotFoundException;
 import com.hera.atendeja.mapper.CustomerMapper;
 import com.hera.atendeja.repository.CustomerRepository;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerServiceTest {
@@ -55,11 +59,64 @@ class CustomerServiceTest {
     }
 
     @Test
+    void shouldUpdateExistingCustomer() {
+        Customer customer = new Customer();
+        customer.setName("Nome antigo");
+        customer.setPhone("11000000000");
+        customer.setEmail("antigo@example.com");
+        customer.setDocument("00000000000");
+        customer.setActive(true);
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+
+        customerService.update(1L, new CustomerUpdateRequest(
+                "  Nome novo  ",
+                " 11988887777 ",
+                "  novo@example.com ",
+                " 12345678900 ",
+                false
+        ));
+
+        assertThat(customer.getName()).isEqualTo("Nome novo");
+        assertThat(customer.getPhone()).isEqualTo("11988887777");
+        assertThat(customer.getEmail()).isEqualTo("novo@example.com");
+        assertThat(customer.getDocument()).isEqualTo("12345678900");
+        assertThat(customer.isActive()).isFalse();
+    }
+
+    @Test
+    void shouldDeactivateExistingCustomer() {
+        Customer customer = new Customer();
+        customer.setActive(true);
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+
+        customerService.deactivate(1L);
+
+        assertThat(customer.isActive()).isFalse();
+    }
+
+    @Test
+    void shouldFilterCustomersBySearchAndActiveStatus() {
+        Customer customer = new Customer();
+        customer.setName("Maria Souza");
+        customer.setPhone("11999999999");
+        customer.setEmail("maria@example.com");
+        customer.setDocument("12345678900");
+        var pageable = PageRequest.of(0, 10);
+        when(customerRepository.search("%maria%", true, pageable))
+                .thenReturn(new PageImpl<>(List.of(customer), pageable, 1));
+
+        var result = customerService.findAll(" Maria ", true, pageable);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).name()).isEqualTo("Maria Souza");
+    }
+
+    @Test
     void shouldThrowWhenCustomerDoesNotExist() {
         when(customerRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> customerService.findById(99L))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Cliente não encontrado");
+                .hasMessageContaining("Cliente");
     }
 }

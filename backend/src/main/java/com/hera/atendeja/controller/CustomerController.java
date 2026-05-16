@@ -3,12 +3,12 @@ package com.hera.atendeja.controller;
 import com.hera.atendeja.dto.customer.CustomerCreateRequest;
 import com.hera.atendeja.dto.customer.CustomerResponse;
 import com.hera.atendeja.dto.customer.CustomerUpdateRequest;
+import com.hera.atendeja.dto.common.PageResponse;
 import com.hera.atendeja.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -35,12 +35,12 @@ public class CustomerController {
 
     @GetMapping
     @Operation(summary = "Lista clientes com paginação e filtros")
-    public Page<CustomerResponse> findAll(
+    public PageResponse<CustomerResponse> findAll(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean active,
             @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
-        return customerService.findAll(search, active, pageable);
+        return PageResponse.from(customerService.findAll(search, active, pageable));
     }
 
     @GetMapping("/{id}")
