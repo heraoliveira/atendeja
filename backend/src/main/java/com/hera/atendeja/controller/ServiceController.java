@@ -1,5 +1,6 @@
 package com.hera.atendeja.controller;
 
+import com.hera.atendeja.dto.common.PageResponse;
 import com.hera.atendeja.dto.service.ServiceCreateRequest;
 import com.hera.atendeja.dto.service.ServiceResponse;
 import com.hera.atendeja.dto.service.ServiceUpdateRequest;
@@ -8,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -35,12 +35,12 @@ public class ServiceController {
 
     @GetMapping
     @Operation(summary = "Lista serviços com paginação e filtros")
-    public Page<ServiceResponse> findAll(
+    public PageResponse<ServiceResponse> findAll(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean active,
             @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
-        return serviceCatalogService.findAll(search, active, pageable);
+        return PageResponse.from(serviceCatalogService.findAll(search, active, pageable));
     }
 
     @GetMapping("/{id}")

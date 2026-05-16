@@ -10,16 +10,26 @@ O AtendeJá precisa demonstrar uma aplicação full stack de portfólio com dom�
 
 ## Decisão
 
-Usar monorepo com:
+Usar monorepo com uma fundação backend evolutiva.
+
+Stack implementada na Fase 1:
 
 - Backend em Java 17 + Spring Boot.
-- Build backend com Maven.
+- Build backend com Maven e Maven Wrapper.
 - Persistência com PostgreSQL, Spring Data JPA e Flyway.
 - API REST versionada em `/api/v1`.
-- Autenticação com Spring Security + JWT.
-- Frontend em React + TypeScript.
-- Execução local com Docker Compose.
+- CRUDs iniciais de clientes, profissionais e serviços.
+- Contrato paginado estável com `PageResponse<T>` nas listagens.
+- Execução local do PostgreSQL com Docker Compose.
 - Documentação em README, Swagger/OpenAPI e ADRs.
+
+Stack planejada para fases futuras:
+
+- Agendamentos e regra de conflito por profissional na Fase 2.
+- Autenticação com Spring Security + JWT em fase posterior.
+- Frontend em React + TypeScript em fase posterior.
+- Dashboard operacional em fase posterior.
+- Docker Compose completo, CI/CD e deploy em fase posterior.
 
 ## Consequências
 
@@ -27,3 +37,4 @@ Usar monorepo com:
 - A regra de negócio fica concentrada em services, não em controllers.
 - O PostgreSQL permite testar consultas, índices e constraints em ambiente real.
 - O monorepo facilita execução local e apresentação em portfólio.
+- Tecnologias ainda não implementadas ficam documentadas como planejamento, sem sugerir entrega prematura.

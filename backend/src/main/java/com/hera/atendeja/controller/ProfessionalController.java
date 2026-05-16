@@ -1,5 +1,6 @@
 package com.hera.atendeja.controller;
 
+import com.hera.atendeja.dto.common.PageResponse;
 import com.hera.atendeja.dto.professional.ProfessionalCreateRequest;
 import com.hera.atendeja.dto.professional.ProfessionalResponse;
 import com.hera.atendeja.dto.professional.ProfessionalUpdateRequest;
@@ -8,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -35,12 +35,12 @@ public class ProfessionalController {
 
     @GetMapping
     @Operation(summary = "Lista profissionais com paginação e filtros")
-    public Page<ProfessionalResponse> findAll(
+    public PageResponse<ProfessionalResponse> findAll(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean active,
             @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
-        return professionalService.findAll(search, active, pageable);
+        return PageResponse.from(professionalService.findAll(search, active, pageable));
     }
 
     @GetMapping("/{id}")
