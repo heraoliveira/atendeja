@@ -1,0 +1,46 @@
+@baseUrl = http://localhost:8080
+
+### Health check
+GET {{baseUrl}}/actuator/health
+
+### Criar cliente
+POST {{baseUrl}}/api/v1/customers
+Content-Type: application/json
+
+{
+  "name": "Maria Souza",
+  "phone": "11999999999",
+  "email": "maria.souza@example.com",
+  "document": "12345678900"
+}
+
+### Listar clientes
+GET {{baseUrl}}/api/v1/customers?search=maria&active=true&page=0&size=10
+
+### Criar profissional
+POST {{baseUrl}}/api/v1/professionals
+Content-Type: application/json
+
+{
+  "name": "Carlos Pereira",
+  "phone": "11888888888",
+  "email": "carlos.pereira@example.com"
+}
+
+### Listar profissionais
+GET {{baseUrl}}/api/v1/professionals?search=carlos&active=true&page=0&size=10
+
+### Criar serviço
+POST {{baseUrl}}/api/v1/services
+Content-Type: application/json
+
+{
+  "name": "Consulta inicial",
+  "description": "Atendimento de avaliação",
+  "durationMinutes": 45,
+  "bufferMinutes": 15,
+  "price": 150.00
+}
+
+### Listar serviços
+GET {{baseUrl}}/api/v1/services?search=consulta&active=true&page=0&size=10

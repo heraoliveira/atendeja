@@ -1,0 +1,29 @@
+name: atendeja
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: atendeja-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-atendeja}
+      POSTGRES_USER: ${POSTGRES_USER:-atendeja_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-atendeja_user} -d ${POSTGRES_DB:-atendeja}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atendeja-network
+
+volumes:
+  postgres-data:
+
+networks:
+  atendeja-network:
+    driver: bridge
