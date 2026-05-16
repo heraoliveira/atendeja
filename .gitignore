@@ -2,11 +2,9 @@
 target/
 *.class
 *.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
 *.war
 *.ear
-
-# Maven
-.mvn/wrapper/maven-wrapper.jar
 
 # Node / React
 node_modules/
@@ -18,6 +16,10 @@ build/
 .env
 .env.local
 .env.*.local
+
+# Local notes / personal docs
+local/
+*.local.md
 
 # IDEs
 .idea/
