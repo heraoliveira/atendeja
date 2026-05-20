@@ -189,6 +189,37 @@ class AppointmentControllerTest {
                 .andExpect(jsonPath("$.errors").isArray());
     }
 
+    @Test
+    void shouldReturnValidationErrorWhenAppointmentStartAtIsInThePast() throws Exception {
+        mockMvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "customerId": 1,
+                                  "professionalId": 2,
+                                  "serviceId": 3,
+                                  "startAt": "2020-01-20T10:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
+    @Test
+    void shouldReturnValidationErrorWhenRescheduleStartAtIsInThePast() throws Exception {
+        mockMvc.perform(patch("/api/v1/appointments/10/reschedule")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "startAt": "2020-01-20T10:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
     private AppointmentResponse appointmentResponse(AppointmentStatus status) {
         return new AppointmentResponse(
                 10L,

@@ -1,0 +1,63 @@
+@baseUrl = http://localhost:8080
+@customerId = 1
+@professionalId = 1
+@serviceId = 1
+@appointmentId = 1
+
+### Health check
+GET {{baseUrl}}/actuator/health
+
+### Criar agendamento
+POST {{baseUrl}}/api/v1/appointments
+Content-Type: application/json
+
+{
+  "customerId": {{customerId}},
+  "professionalId": {{professionalId}},
+  "serviceId": {{serviceId}},
+  "startAt": "2030-01-20T10:00:00Z"
+}
+
+### Listar agendamentos
+GET {{baseUrl}}/api/v1/appointments?date=2030-01-20&professionalId={{professionalId}}&page=0&size=10
+
+### Buscar agendamento por id
+GET {{baseUrl}}/api/v1/appointments/{{appointmentId}}
+
+### Testar conflito de horário
+POST {{baseUrl}}/api/v1/appointments
+Content-Type: application/json
+
+{
+  "customerId": {{customerId}},
+  "professionalId": {{professionalId}},
+  "serviceId": {{serviceId}},
+  "startAt": "2030-01-20T10:30:00Z"
+}
+
+### Testar intervalo sem conflito no limite exato
+POST {{baseUrl}}/api/v1/appointments
+Content-Type: application/json
+
+{
+  "customerId": {{customerId}},
+  "professionalId": {{professionalId}},
+  "serviceId": {{serviceId}},
+  "startAt": "2030-01-20T11:00:00Z"
+}
+
+### Remarcar agendamento
+PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/reschedule
+Content-Type: application/json
+
+{
+  "startAt": "2030-01-21T14:00:00Z"
+}
+
+### Cancelar agendamento
+PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/cancel
+Content-Type: application/json
+
+{
+  "cancelReason": "Cliente solicitou cancelamento."
+}

@@ -1,6 +1,7 @@
 package com.hera.atendeja.dto.appointment;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 
@@ -16,6 +17,7 @@ public record AppointmentCreateRequest(
         Long serviceId,
 
         @NotNull(message = "Horário de início é obrigatório.")
+        @Future(message = "Horário de início deve estar no futuro.")
         Instant startAt
 ) {
 }

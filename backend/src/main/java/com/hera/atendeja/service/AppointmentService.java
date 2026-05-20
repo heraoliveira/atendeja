@@ -94,7 +94,7 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse create(AppointmentCreateRequest request) {
         Customer customer = getActiveCustomer(request.customerId());
-        Professional professional = getActiveProfessional(request.professionalId());
+        Professional professional = getActiveProfessionalForScheduling(request.professionalId());
         ServiceCatalog service = getActiveService(request.serviceId());
         Instant endAt = calculateEndAt(request.startAt(), service);
 
@@ -114,12 +114,13 @@ public class AppointmentService {
     public AppointmentResponse reschedule(Long id, AppointmentRescheduleRequest request) {
         Appointment appointment = getById(id);
         ensureAppointmentCanChange(appointment);
+        Professional professional = getActiveProfessionalForScheduling(appointment.getProfessional().getId());
         ensureActiveAppointmentResources(appointment);
 
         Instant endAt = calculateEndAt(request.startAt(), appointment.getService());
         ensureNoScheduleConflict(
                 appointment.getId(),
-                appointment.getProfessional().getId(),
+                professional.getId(),
                 request.startAt(),
                 endAt
         );
@@ -186,8 +187,8 @@ public class AppointmentService {
         return customer;
     }
 
-    private Professional getActiveProfessional(Long id) {
-        Professional professional = professionalRepository.findById(id)
+    private Professional getActiveProfessionalForScheduling(Long id) {
+        Professional professional = professionalRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Profissional", id));
         if (!professional.isActive()) {
             throw new BusinessRuleException("Profissional inativo não pode receber novos agendamentos.");

@@ -84,6 +84,7 @@ class AppointmentServiceTest {
 
         ArgumentCaptor<Appointment> captor = ArgumentCaptor.forClass(Appointment.class);
         verify(appointmentRepository).save(captor.capture());
+        verify(professionalRepository).findByIdForUpdate(2L);
         Appointment savedAppointment = captor.getValue();
         assertThat(savedAppointment.getCustomer()).isSameAs(customer);
         assertThat(savedAppointment.getProfessional()).isSameAs(professional);
@@ -125,6 +126,7 @@ class AppointmentServiceTest {
         Instant newStartAt = Instant.parse("2030-01-21T14:00:00Z");
         Appointment appointment = appointment();
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+        when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(appointment.getProfessional()));
         when(appointmentRepository.existsScheduleConflict(eq(2L), eq(newStartAt), eq(newStartAt.plusSeconds(3600)), eq(10L), anyCollection()))
                 .thenReturn(false);
 
@@ -132,6 +134,7 @@ class AppointmentServiceTest {
 
         assertThat(appointment.getStartAt()).isEqualTo(newStartAt);
         assertThat(appointment.getEndAt()).isEqualTo(Instant.parse("2030-01-21T15:00:00Z"));
+        verify(professionalRepository).findByIdForUpdate(2L);
     }
 
     @Test
@@ -139,6 +142,7 @@ class AppointmentServiceTest {
         Instant newStartAt = Instant.parse("2030-01-21T14:00:00Z");
         Appointment appointment = appointment();
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+        when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(appointment.getProfessional()));
         when(appointmentRepository.existsScheduleConflict(eq(2L), eq(newStartAt), eq(newStartAt.plusSeconds(3600)), eq(10L), anyCollection()))
                 .thenReturn(true);
 
@@ -205,7 +209,7 @@ class AppointmentServiceTest {
     @Test
     void shouldThrowWhenProfessionalDoesNotExist() {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer()));
-        when(professionalRepository.findById(99L)).thenReturn(Optional.empty());
+        when(professionalRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appointmentService.create(new AppointmentCreateRequest(
                 1L,
@@ -220,7 +224,7 @@ class AppointmentServiceTest {
     @Test
     void shouldThrowWhenServiceDoesNotExist() {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer()));
-        when(professionalRepository.findById(2L)).thenReturn(Optional.of(professional()));
+        when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(professional()));
         when(serviceCatalogRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appointmentService.create(new AppointmentCreateRequest(
@@ -238,7 +242,7 @@ class AppointmentServiceTest {
         Professional professional = professional();
         professional.setActive(false);
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer()));
-        when(professionalRepository.findById(2L)).thenReturn(Optional.of(professional));
+        when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(professional));
 
         assertThatThrownBy(() -> appointmentService.create(new AppointmentCreateRequest(
                 1L,
@@ -255,6 +259,7 @@ class AppointmentServiceTest {
         Appointment appointment = appointment();
         appointment.getService().setActive(false);
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+        when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(appointment.getProfessional()));
 
         assertThatThrownBy(() -> appointmentService.reschedule(
                 10L,
@@ -266,7 +271,7 @@ class AppointmentServiceTest {
 
     private void mockActiveResources(Customer customer, Professional professional, ServiceCatalog service) {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
-        when(professionalRepository.findById(2L)).thenReturn(Optional.of(professional));
+        when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(professional));
         when(serviceCatalogRepository.findById(3L)).thenReturn(Optional.of(service));
     }
 
