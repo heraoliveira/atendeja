@@ -2,6 +2,8 @@
 
 ## Fase 0 - Setup do repositório, Docker e documentação inicial
 
+Status: concluída.
+
 Objetivo: preparar a base do repositório, documentar o escopo e disponibilizar PostgreSQL local via Docker.
 
 Critérios de aceite:
@@ -13,6 +15,8 @@ Critérios de aceite:
 - Nenhum código de backend ou frontend criado.
 
 ## Fase 1 - Backend base, banco, Flyway e CRUDs iniciais
+
+Status: concluída.
 
 Objetivo: criar a API Spring Boot com conexão ao PostgreSQL, migrations iniciais e CRUDs de clientes, profissionais e serviços.
 
@@ -26,6 +30,8 @@ Critérios de aceite:
 
 ## Fase 2 - Agendamentos e regra de conflito
 
+Status: concluída.
+
 Objetivo: implementar criação, listagem, remarcação e cancelamento de agendamentos com detecção de conflito por profissional.
 
 Critérios de aceite:
@@ -33,9 +39,12 @@ Critérios de aceite:
 - Criar agendamento válido retorna `201`.
 - Tentar horário sobreposto retorna `409`.
 - Remarcação recalcula horário final.
-- Cancelamento tardio exige motivo.
+- Cancelamento exige motivo.
+- Criação e remarcação usam transação e bloqueio pessimista por profissional.
 
 ## Fase 3 - Autenticação JWT e autorização por roles
+
+Status: próxima fase.
 
 Objetivo: proteger a API com login JWT, senhas com BCrypt e roles `ADMIN` e `ATTENDANT`.
 

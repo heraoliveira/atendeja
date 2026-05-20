@@ -12,7 +12,7 @@ O AtendeJá precisa demonstrar uma aplicação full stack de portfólio com dom�
 
 Usar monorepo com uma fundação backend evolutiva.
 
-Stack implementada na Fase 1:
+Stack implementada até a Fase 2:
 
 - Backend em Java 17 + Spring Boot.
 - Build backend com Maven e Maven Wrapper.
@@ -20,12 +20,13 @@ Stack implementada na Fase 1:
 - API REST versionada em `/api/v1`.
 - CRUDs iniciais de clientes, profissionais e serviços.
 - Contrato paginado estável com `PageResponse<T>` nas listagens.
+- Agendamentos com criação, listagem, detalhe, remarcação e cancelamento.
+- Regra de conflito por profissional com cálculo de `endAt` no backend.
 - Execução local do PostgreSQL com Docker Compose.
 - Documentação em README, Swagger/OpenAPI e ADRs.
 
 Stack planejada para fases futuras:
 
-- Agendamentos e regra de conflito por profissional na Fase 2.
 - Autenticação com Spring Security + JWT em fase posterior.
 - Frontend em React + TypeScript em fase posterior.
 - Dashboard operacional em fase posterior.
