@@ -17,6 +17,36 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BusinessRuleException.class)
+    ResponseEntity<ProblemDetail> handleBusinessRule(
+            BusinessRuleException exception,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblem(
+                HttpStatus.BAD_REQUEST,
+                "Regra de negócio inválida",
+                exception.getMessage(),
+                request
+        );
+        problem.setProperty("code", "BUSINESS_RULE_VIOLATION");
+        return ResponseEntity.badRequest().body(problem);
+    }
+
+    @ExceptionHandler(AppointmentConflictException.class)
+    ResponseEntity<ProblemDetail> handleAppointmentConflict(
+            AppointmentConflictException exception,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblem(
+                HttpStatus.CONFLICT,
+                "Conflito de agenda",
+                exception.getMessage(),
+                request
+        );
+        problem.setProperty("code", "APPOINTMENT_TIME_CONFLICT");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<ProblemDetail> handleResourceNotFound(
             ResourceNotFoundException exception,
