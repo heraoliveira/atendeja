@@ -1,0 +1,58 @@
+package com.hera.atendeja.repository;
+
+import com.hera.atendeja.entity.Appointment;
+import com.hera.atendeja.entity.AppointmentStatus;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+
+    @Override
+    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    Optional<Appointment> findById(Long id);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(appointment) > 0 THEN true ELSE false END
+            FROM Appointment appointment
+            WHERE appointment.professional.id = :professionalId
+              AND appointment.startAt < :newEndAt
+              AND appointment.endAt > :newStartAt
+              AND appointment.status NOT IN :nonBlockingStatuses
+              AND (:ignoredAppointmentId IS NULL OR appointment.id <> :ignoredAppointmentId)
+            """)
+    boolean existsScheduleConflict(
+            @Param("professionalId") Long professionalId,
+            @Param("newStartAt") Instant newStartAt,
+            @Param("newEndAt") Instant newEndAt,
+            @Param("ignoredAppointmentId") Long ignoredAppointmentId,
+            @Param("nonBlockingStatuses") Collection<AppointmentStatus> nonBlockingStatuses
+    );
+
+    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    @Query("""
+            SELECT appointment
+            FROM Appointment appointment
+            WHERE (:professionalId IS NULL OR appointment.professional.id = :professionalId)
+              AND (:customerId IS NULL OR appointment.customer.id = :customerId)
+              AND (:serviceId IS NULL OR appointment.service.id = :serviceId)
+              AND (:status IS NULL OR appointment.status = :status)
+              AND (:dayStart IS NULL OR appointment.startAt >= :dayStart)
+              AND (:dayEnd IS NULL OR appointment.startAt < :dayEnd)
+            """)
+    Page<Appointment> search(
+            @Param("professionalId") Long professionalId,
+            @Param("customerId") Long customerId,
+            @Param("serviceId") Long serviceId,
+            @Param("status") AppointmentStatus status,
+            @Param("dayStart") Instant dayStart,
+            @Param("dayEnd") Instant dayEnd,
+            Pageable pageable
+    );
+}

@@ -2,13 +2,18 @@ package com.hera.atendeja;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.hera.atendeja.entity.Appointment;
+import com.hera.atendeja.entity.AppointmentStatus;
 import com.hera.atendeja.entity.Customer;
 import com.hera.atendeja.entity.Professional;
 import com.hera.atendeja.entity.ServiceCatalog;
+import com.hera.atendeja.repository.AppointmentRepository;
 import com.hera.atendeja.repository.CustomerRepository;
 import com.hera.atendeja.repository.ProfessionalRepository;
 import com.hera.atendeja.repository.ServiceCatalogRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +45,9 @@ class PersistenceIntegrationTest {
     private ServiceCatalogRepository serviceCatalogRepository;
 
     @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @DynamicPropertySource
@@ -51,6 +59,7 @@ class PersistenceIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        appointmentRepository.deleteAll();
         serviceCatalogRepository.deleteAll();
         professionalRepository.deleteAll();
         customerRepository.deleteAll();
@@ -88,7 +97,7 @@ class PersistenceIntegrationTest {
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = TRUE",
                 Integer.class
         );
-        assertThat(appliedMigrations).isEqualTo(2);
+        assertThat(appliedMigrations).isEqualTo(3);
     }
 
     @Test
@@ -141,5 +150,77 @@ class PersistenceIntegrationTest {
                 DataIntegrityViolationException.class,
                 () -> serviceCatalogRepository.saveAndFlush(invalidService)
         );
+    }
+
+    @Test
+    void shouldDetectAppointmentConflictUsingHalfOpenIntervals() {
+        Customer customer = new Customer();
+        customer.setName("Cliente Agenda");
+        customer.setPhone("21999990000");
+        customerRepository.save(customer);
+
+        Professional professional = new Professional();
+        professional.setName("Profissional Agenda");
+        professional.setPhone("21999990001");
+        professionalRepository.save(professional);
+
+        ServiceCatalog service = new ServiceCatalog();
+        service.setName("Consulta agenda");
+        service.setDurationMinutes(45);
+        service.setBufferMinutes(15);
+        service.setPrice(new BigDecimal("150.00"));
+        serviceCatalogRepository.save(service);
+
+        Appointment appointment = new Appointment();
+        appointment.setCustomer(customer);
+        appointment.setProfessional(professional);
+        appointment.setService(service);
+        appointment.setStartAt(Instant.parse("2030-01-20T10:00:00Z"));
+        appointment.setEndAt(Instant.parse("2030-01-20T11:00:00Z"));
+        appointment.setStatus(AppointmentStatus.SCHEDULED);
+        appointmentRepository.saveAndFlush(appointment);
+
+        Set<AppointmentStatus> nonBlockingStatuses = Set.of(AppointmentStatus.CANCELED, AppointmentStatus.NO_SHOW);
+
+        boolean overlappingConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T10:30:00Z"),
+                Instant.parse("2030-01-20T11:30:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+        boolean exactBoundaryConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T11:00:00Z"),
+                Instant.parse("2030-01-20T12:00:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+
+        assertThat(overlappingConflict).isTrue();
+        assertThat(exactBoundaryConflict).isFalse();
+
+        appointment.setStatus(AppointmentStatus.CANCELED);
+        appointmentRepository.saveAndFlush(appointment);
+        boolean canceledAppointmentConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T10:30:00Z"),
+                Instant.parse("2030-01-20T11:30:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+
+        appointment.setStatus(AppointmentStatus.NO_SHOW);
+        appointmentRepository.saveAndFlush(appointment);
+        boolean noShowAppointmentConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T10:30:00Z"),
+                Instant.parse("2030-01-20T11:30:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+
+        assertThat(canceledAppointmentConflict).isFalse();
+        assertThat(noShowAppointmentConflict).isFalse();
     }
 }
