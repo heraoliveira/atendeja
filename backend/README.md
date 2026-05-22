@@ -4,16 +4,18 @@ API REST do AtendeJá, construída com Java 17, Spring Boot, PostgreSQL e Flyway
 
 ## Status Atual
 
-O backend contém a base das Fases 1 e 2:
+O backend contém a base das Fases 1, 2 e 3:
 
 - CRUDs de clientes, profissionais e serviços.
 - Listagens paginadas com contrato `PageResponse<T>`.
 - Migrations Flyway para o schema inicial, índices e agendamentos.
 - Módulo de agendamentos com criação, listagem, detalhe, remarcação e cancelamento.
 - Regra de conflito de horários por profissional, usando intervalo semiaberto `[startAt, endAt)`.
+- Login Bearer JWT com expiração configurável, senhas BCrypt e roles `ADMIN` e `ATTENDANT`.
+- Endpoints de negócio protegidos por Spring Security.
 - Testes unitários, testes de controller com MockMvc e integração com PostgreSQL real via Testcontainers.
 
-Spring Security, JWT, roles, dashboard, frontend React e deploy ainda não foram implementados neste backend.
+Dashboard, frontend React e deploy ainda não foram implementados neste backend.
 
 ## Stack Atual
 
@@ -27,6 +29,7 @@ Spring Security, JWT, roles, dashboard, frontend React e deploy ainda não foram
 - PostgreSQL.
 - Springdoc OpenAPI.
 - Spring Boot Actuator.
+- Spring Security e OAuth2 Resource Server.
 - JUnit, Mockito, MockMvc e Testcontainers.
 
 ## Execução Local
@@ -54,6 +57,8 @@ URLs locais:
 - Health check: `http://localhost:8080/actuator/health`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+Antes de iniciar a API, configure `JWT_SECRET` com ao menos 32 caracteres. Usuários de demonstração locais são criados somente quando `DEMO_AUTH_USERS_ENABLED=true` e suas senhas são informadas por ambiente.
 
 ## Testes
 
@@ -106,6 +111,23 @@ mvn test -Dtest=PersistenceIntegrationTest
 | `POST` | `/api/v1/appointments` | Cria agendamento. |
 | `PATCH` | `/api/v1/appointments/{id}/reschedule` | Remarca agendamento. |
 | `PATCH` | `/api/v1/appointments/{id}/cancel` | Cancela agendamento. |
+
+## Endpoints Da Fase 3
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| `POST` | `/api/v1/auth/login` | Autentica usuário ativo e retorna Bearer JWT. |
+
+Envie o token retornado em `Authorization: Bearer <accessToken>` para os endpoints de negócio.
+
+## Roles
+
+| Recurso | `ADMIN` | `ATTENDANT` |
+|---|---|---|
+| Consultar clientes, profissionais, serviços e agendamentos | Permitido | Permitido |
+| Criar, atualizar e inativar clientes | Permitido | Permitido |
+| Criar, atualizar e inativar profissionais ou serviços | Permitido | Negado com `403` |
+| Criar, remarcar e cancelar agendamentos | Permitido | Permitido |
 
 ## Regra De Conflito
 

@@ -35,3 +35,16 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+atendeja:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:}
+      expiration: ${JWT_EXPIRATION:PT8H}
+  auth:
+    demo-users:
+      enabled: ${DEMO_AUTH_USERS_ENABLED:false}
+      admin-email: ${DEMO_ADMIN_EMAIL:admin@atendeja.local}
+      admin-password: ${DEMO_ADMIN_PASSWORD:}
+      attendant-email: ${DEMO_ATTENDANT_EMAIL:attendant@atendeja.local}
+      attendant-password: ${DEMO_ATTENDANT_PASSWORD:}

@@ -2,7 +2,7 @@
 
 AtendeJá é uma aplicação full stack de agenda e fila de atendimento para prestadores locais, como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas.
 
-> Status atual: Fase 2 implementada no backend. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais de clientes, profissionais e serviços, além do módulo de agendamentos com regra de conflito de horário por profissional. Autenticação/JWT, roles, dashboard, frontend React e deploy ainda não foram implementados.
+> Status atual: Fase 3 implementada no backend. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional e autenticação Bearer JWT com autorização por roles. Dashboard, frontend React e deploy ainda não foram implementados.
 
 ## Estado Atual
 
@@ -36,9 +36,19 @@ Implementado na Fase 2:
 - Retorno `409 Conflict` para sobreposição de horários.
 - Testes unitários, testes de controller e teste de integração com PostgreSQL real para a regra de conflito.
 
+Implementado na Fase 3:
+
+- Entidade `UserAccount`, enum `UserRole` e migration `V4__auth_users.sql`.
+- Login em `POST /api/v1/auth/login`.
+- Senhas armazenadas como hash BCrypt.
+- JWT assinado com segredo e expiração configurados por ambiente.
+- Spring Security protegendo endpoints de negócio com roles `ADMIN` e `ATTENDANT`.
+- Respostas `401 Unauthorized` e `403 Forbidden` padronizadas.
+- Bearer JWT documentado no Swagger/OpenAPI.
+- Bootstrap local opcional de usuários de demonstração sem senha em migration.
+
 Ainda planejado:
 
-- Fase 3: autenticação JWT, Spring Security e roles.
 - Fase 4: dashboard e filtros operacionais avançados.
 - Fase 5: frontend React + TypeScript.
 - Fase 6: ampliação de testes automatizados.
@@ -56,13 +66,14 @@ Ainda planejado:
 - PostgreSQL
 - Springdoc OpenAPI
 - Spring Boot Actuator
+- Spring Security
+- OAuth2 Resource Server para Bearer JWT
+- BCrypt
 - JUnit, Mockito, MockMvc e Testcontainers
 - Docker Compose para PostgreSQL local
 
 ## Stack Planejada
 
-- Spring Security + JWT
-- Roles `ADMIN` e `ATTENDANT`
 - React
 - TypeScript
 - React Router
@@ -77,7 +88,7 @@ atendeja/
   backend/              API REST Java 17 + Spring Boot
   docs/
     adr/                decisões técnicas
-    api/                exemplos HTTP da Fase 1
+    api/                exemplos HTTP por fase do backend
     briefing/           contexto do produto e escopo
   frontend/             placeholder documental; sem código React ainda
   docker-compose.yml    PostgreSQL local
@@ -94,8 +105,7 @@ Pacotes principais do backend:
 - `mapper`: conversão entre entidades e DTOs.
 - `exception`: erros padronizados e handler global.
 - `config`: configurações da aplicação.
-
-O pacote `security` ainda não existe. Ele será criado somente na fase de autenticação.
+- `security`: JWT, autorização, handlers 401/403 e bootstrap local de usuários.
 
 ## Execução Local
 
@@ -121,6 +131,8 @@ No Linux/macOS:
 cp .env.example .env
 ```
 
+Ao executar o backend diretamente pelo Maven, exponha no terminal as variáveis de autenticação necessárias. O arquivo `.env` é lido pelo Docker Compose, mas não é carregado automaticamente pelo processo Java.
+
 ### Subir banco local
 
 ```bash
@@ -133,6 +145,10 @@ No Windows PowerShell:
 
 ```powershell
 cd backend
+$env:JWT_SECRET = "change_this_local_demo_secret_with_at_least_32_characters"
+$env:DEMO_AUTH_USERS_ENABLED = "true"
+$env:DEMO_ADMIN_PASSWORD = "change_me_admin"
+$env:DEMO_ATTENDANT_PASSWORD = "change_me_attendant"
 .\mvnw spring-boot:run
 ```
 
@@ -140,6 +156,10 @@ No Linux/macOS:
 
 ```bash
 cd backend
+export JWT_SECRET="change_this_local_demo_secret_with_at_least_32_characters"
+export DEMO_AUTH_USERS_ENABLED="true"
+export DEMO_ADMIN_PASSWORD="change_me_admin"
+export DEMO_ATTENDANT_PASSWORD="change_me_attendant"
 ./mvnw spring-boot:run
 ```
 
@@ -195,7 +215,13 @@ docker compose down -v
 | `POSTGRES_PORT` | Porta exposta localmente para o PostgreSQL. |
 | `API_PORT` | Porta da API Spring Boot. |
 | `FRONTEND_PORT` | Porta planejada para o futuro frontend React. |
-| `JWT_SECRET` | Planejada para a futura fase de JWT; ainda não usada. |
+| `JWT_SECRET` | Segredo de assinatura do JWT; deve ter ao menos 32 caracteres. |
+| `JWT_EXPIRATION` | Duração ISO-8601 do access token, como `PT8H`. |
+| `DEMO_AUTH_USERS_ENABLED` | Habilita bootstrap local de usuários de demonstração. |
+| `DEMO_ADMIN_EMAIL` | E-mail do usuário local com role `ADMIN`. |
+| `DEMO_ADMIN_PASSWORD` | Senha local usada para gerar hash BCrypt do admin no bootstrap. |
+| `DEMO_ATTENDANT_EMAIL` | E-mail do usuário local com role `ATTENDANT`. |
+| `DEMO_ATTENDANT_PASSWORD` | Senha local usada para gerar hash BCrypt do atendente no bootstrap. |
 | `CORS_ALLOWED_ORIGINS` | Planejada para integração futura com frontend; ainda não aplicada. |
 
 ## Endpoints Implementados
@@ -205,6 +231,12 @@ docker compose down -v
 | Método | Rota | Objetivo |
 |---|---|---|
 | `GET` | `/actuator/health` | Health check da API. |
+
+### Autenticação
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| `POST` | `/api/v1/auth/login` | Autentica usuário ativo e retorna Bearer JWT. |
 
 ### Clientes
 
@@ -254,6 +286,37 @@ Filtros disponíveis em `GET /api/v1/appointments`:
 - `serviceId`: id do serviço.
 - `status`: um dos valores de `AppointmentStatus`.
 - Parâmetros de paginação do Spring, como `page`, `size` e `sort`.
+
+Todos os endpoints de negócio exigem Bearer Token. O health check, Swagger/OpenAPI e o endpoint de login permanecem públicos.
+
+## Login E Bearer Token
+
+Defina `JWT_SECRET` antes de iniciar a API. Para login local de demonstração, habilite `DEMO_AUTH_USERS_ENABLED` e informe e-mails e senhas no ambiente; o bootstrap cria hashes BCrypt somente quando os usuários ainda não existem.
+
+Exemplo de login:
+
+```json
+{
+  "email": "admin@atendeja.local",
+  "password": "change_me_admin"
+}
+```
+
+A resposta contém `accessToken`, `tokenType`, `expiresAt`, `email` e `role`. Envie o token nos endpoints protegidos:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+## Matriz De Permissões
+
+| Recurso | `ADMIN` | `ATTENDANT` |
+|---|---|---|
+| Listar e consultar clientes, profissionais, serviços e agendamentos | Permitido | Permitido |
+| Criar, atualizar e inativar clientes | Permitido | Permitido |
+| Criar, atualizar e inativar profissionais | Permitido | Negado com `403` |
+| Criar, atualizar e inativar serviços | Permitido | Negado com `403` |
+| Criar, remarcar e cancelar agendamentos | Permitido | Permitido |
 
 ## Exemplo De Criação De Agendamento
 
@@ -325,5 +388,8 @@ Nesta fase, a API implementa criação, listagem, detalhe, remarcação e cancel
 - [Briefing técnico](docs/briefing/atendeja-briefing.md)
 - [Roadmap de implementação](docs/implementation-roadmap.md)
 - [Exemplos HTTP da Fase 1](docs/api/phase-1-cruds.http)
+- [Exemplos HTTP da Fase 2](docs/api/phase-2-appointments.http)
+- [Exemplos HTTP da Fase 3](docs/api/phase-3-auth.http)
 - [ADR 0001 - Arquitetura e stack](docs/adr/0001-architecture-and-stack.md)
 - [ADR 0002 - Regra de conflito de agenda](docs/adr/0002-schedule-conflict-rule.md)
+- [ADR 0003 - Autenticação JWT e roles](docs/adr/0003-authentication-and-roles.md)

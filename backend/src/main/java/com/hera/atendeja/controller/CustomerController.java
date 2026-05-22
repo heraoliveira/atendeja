@@ -6,6 +6,7 @@ import com.hera.atendeja.dto.customer.CustomerUpdateRequest;
 import com.hera.atendeja.dto.common.PageResponse;
 import com.hera.atendeja.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/customers")
+@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Customers", description = "Cadastro de clientes")
 public class CustomerController {
 
