@@ -44,7 +44,7 @@ Critérios de aceite:
 
 ## Fase 3 - Autenticação JWT e autorização por roles
 
-Status: próxima fase.
+Status: concluída.
 
 Objetivo: proteger a API com login JWT, senhas com BCrypt e roles `ADMIN` e `ATTENDANT`.
 
@@ -55,6 +55,8 @@ Critérios de aceite:
 - Permissões por role funcionam.
 
 ## Fase 4 - Dashboard e filtros
+
+Status: próxima fase.
 
 Objetivo: implementar agenda diária filtrada e indicadores simples de ocupação, cancelamentos e no-show.
 

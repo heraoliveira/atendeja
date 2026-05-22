@@ -3,12 +3,14 @@
 @professionalId = 1
 @serviceId = 1
 @appointmentId = 1
+@accessToken = paste_access_token_here
 
 ### Health check
 GET {{baseUrl}}/actuator/health
 
 ### Criar agendamento
 POST {{baseUrl}}/api/v1/appointments
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -20,12 +22,15 @@ Content-Type: application/json
 
 ### Listar agendamentos
 GET {{baseUrl}}/api/v1/appointments?date=2030-01-20&professionalId={{professionalId}}&page=0&size=10
+Authorization: Bearer {{accessToken}}
 
 ### Buscar agendamento por id
 GET {{baseUrl}}/api/v1/appointments/{{appointmentId}}
+Authorization: Bearer {{accessToken}}
 
 ### Testar conflito de horário
 POST {{baseUrl}}/api/v1/appointments
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -37,6 +42,7 @@ Content-Type: application/json
 
 ### Testar intervalo sem conflito no limite exato
 POST {{baseUrl}}/api/v1/appointments
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -48,6 +54,7 @@ Content-Type: application/json
 
 ### Remarcar agendamento
 PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/reschedule
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -56,6 +63,7 @@ Content-Type: application/json
 
 ### Cancelar agendamento
 PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/cancel
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {

@@ -1,0 +1,8 @@
+atendeja:
+  security:
+    jwt:
+      secret: test_secret_for_jwt_validation_with_32_chars
+      expiration: PT1H
+  auth:
+    demo-users:
+      enabled: false

@@ -1,10 +1,12 @@
 @baseUrl = http://localhost:8080
+@accessToken = paste_access_token_here
 
 ### Health check
 GET {{baseUrl}}/actuator/health
 
 ### Criar cliente
 POST {{baseUrl}}/api/v1/customers
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -16,9 +18,11 @@ Content-Type: application/json
 
 ### Listar clientes
 GET {{baseUrl}}/api/v1/customers?search=maria&active=true&page=0&size=10
+Authorization: Bearer {{accessToken}}
 
 ### Criar profissional
 POST {{baseUrl}}/api/v1/professionals
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -29,9 +33,11 @@ Content-Type: application/json
 
 ### Listar profissionais
 GET {{baseUrl}}/api/v1/professionals?search=carlos&active=true&page=0&size=10
+Authorization: Bearer {{accessToken}}
 
 ### Criar serviço
 POST {{baseUrl}}/api/v1/services
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -44,3 +50,4 @@ Content-Type: application/json
 
 ### Listar serviços
 GET {{baseUrl}}/api/v1/services?search=consulta&active=true&page=0&size=10
+Authorization: Bearer {{accessToken}}
