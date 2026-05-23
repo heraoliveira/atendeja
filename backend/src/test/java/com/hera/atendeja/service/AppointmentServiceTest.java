@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.hera.atendeja.dto.appointment.AppointmentCancelRequest;
 import com.hera.atendeja.dto.appointment.AppointmentCreateRequest;
+import com.hera.atendeja.dto.appointment.AppointmentNoShowRequest;
 import com.hera.atendeja.dto.appointment.AppointmentRescheduleRequest;
 import com.hera.atendeja.entity.Appointment;
 import com.hera.atendeja.entity.AppointmentStatus;
@@ -27,6 +28,8 @@ import com.hera.atendeja.repository.ServiceCatalogRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,7 +68,8 @@ class AppointmentServiceTest {
                 customerRepository,
                 professionalRepository,
                 serviceCatalogRepository,
-                new AppointmentMapper()
+                new AppointmentMapper(),
+                new BusinessTime(Clock.fixed(Instant.parse("2030-01-20T10:30:00Z"), ZoneOffset.UTC))
         );
     }
 
@@ -159,6 +163,85 @@ class AppointmentServiceTest {
 
         assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CANCELED);
         assertThat(appointment.getCancelReason()).isEqualTo("Cliente solicitou remarcação");
+    }
+
+    @Test
+    void shouldConfirmOpenScheduledAppointment() {
+        Appointment appointment = appointment();
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        appointmentService.confirm(10L);
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
+    }
+
+    @Test
+    void shouldBlockConfirmationForClosedAppointment() {
+        Appointment appointment = appointment();
+        appointment.setStatus(AppointmentStatus.CANCELED);
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThatThrownBy(() -> appointmentService.confirm(10L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Somente agendamentos pendentes");
+    }
+
+    @Test
+    void shouldCheckInConfirmedAppointmentOnBusinessDate() {
+        Appointment appointment = appointment();
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        appointmentService.checkIn(10L);
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CHECKED_IN);
+        assertThat(appointment.getCheckedInAt()).isEqualTo(Instant.parse("2030-01-20T10:30:00Z"));
+    }
+
+    @Test
+    void shouldBlockCheckInOutsideBusinessDate() {
+        Appointment appointment = appointment();
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setStartAt(Instant.parse("2030-01-21T10:00:00Z"));
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThatThrownBy(() -> appointmentService.checkIn(10L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("dia do agendamento");
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AppointmentStatus.class, names = {"CONFIRMED", "CHECKED_IN"})
+    void shouldCompleteAllowedOperationalAppointments(AppointmentStatus status) {
+        Appointment appointment = appointment();
+        appointment.setStatus(status);
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        appointmentService.complete(10L);
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.COMPLETED);
+    }
+
+    @Test
+    void shouldMarkNoShowAfterAppointmentEnds() {
+        Appointment appointment = appointment();
+        appointment.setEndAt(Instant.parse("2030-01-20T10:00:00Z"));
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        appointmentService.noShow(10L, new AppointmentNoShowRequest("  Cliente não compareceu  "));
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.NO_SHOW);
+        assertThat(appointment.getNoShowReason()).isEqualTo("Cliente não compareceu");
+    }
+
+    @Test
+    void shouldBlockNoShowBeforeAppointmentEnds() {
+        Appointment appointment = appointment();
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThatThrownBy(() -> appointmentService.noShow(10L, new AppointmentNoShowRequest(null)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("após o horário final");
     }
 
     @ParameterizedTest

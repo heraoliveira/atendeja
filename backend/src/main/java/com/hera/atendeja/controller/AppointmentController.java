@@ -2,6 +2,7 @@ package com.hera.atendeja.controller;
 
 import com.hera.atendeja.dto.appointment.AppointmentCancelRequest;
 import com.hera.atendeja.dto.appointment.AppointmentCreateRequest;
+import com.hera.atendeja.dto.appointment.AppointmentNoShowRequest;
 import com.hera.atendeja.dto.appointment.AppointmentRescheduleRequest;
 import com.hera.atendeja.dto.appointment.AppointmentResponse;
 import com.hera.atendeja.dto.common.PageResponse;
@@ -89,5 +90,32 @@ public class AppointmentController {
             @Valid @RequestBody AppointmentCancelRequest request
     ) {
         return appointmentService.cancel(id, request);
+    }
+
+    @PatchMapping("/{id}/confirm")
+    @Operation(summary = "Confirma um agendamento")
+    public AppointmentResponse confirm(@PathVariable Long id) {
+        return appointmentService.confirm(id);
+    }
+
+    @PatchMapping("/{id}/check-in")
+    @Operation(summary = "Registra check-in em um agendamento confirmado")
+    public AppointmentResponse checkIn(@PathVariable Long id) {
+        return appointmentService.checkIn(id);
+    }
+
+    @PatchMapping("/{id}/complete")
+    @Operation(summary = "Conclui um agendamento confirmado ou com check-in")
+    public AppointmentResponse complete(@PathVariable Long id) {
+        return appointmentService.complete(id);
+    }
+
+    @PatchMapping("/{id}/no-show")
+    @Operation(summary = "Registra falta em um agendamento")
+    public AppointmentResponse noShow(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) AppointmentNoShowRequest request
+    ) {
+        return appointmentService.noShow(id, request);
     }
 }
