@@ -127,6 +127,48 @@ class AppointmentControllerTest {
     }
 
     @Test
+    void shouldConfirmAppointment() throws Exception {
+        when(appointmentService.confirm(10L)).thenReturn(appointmentResponse(AppointmentStatus.CONFIRMED));
+
+        mockMvc.perform(patch("/api/v1/appointments/10/confirm"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    @Test
+    void shouldCheckInAppointment() throws Exception {
+        when(appointmentService.checkIn(10L)).thenReturn(appointmentResponse(AppointmentStatus.CHECKED_IN));
+
+        mockMvc.perform(patch("/api/v1/appointments/10/check-in"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CHECKED_IN"));
+    }
+
+    @Test
+    void shouldCompleteAppointment() throws Exception {
+        when(appointmentService.complete(10L)).thenReturn(appointmentResponse(AppointmentStatus.COMPLETED));
+
+        mockMvc.perform(patch("/api/v1/appointments/10/complete"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
+    void shouldMarkAppointmentNoShow() throws Exception {
+        when(appointmentService.noShow(eq(10L), any())).thenReturn(appointmentResponse(AppointmentStatus.NO_SHOW));
+
+        mockMvc.perform(patch("/api/v1/appointments/10/no-show")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "noShowReason": "Cliente não compareceu"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NO_SHOW"));
+    }
+
+    @Test
     void shouldReturnConflictWhenAppointmentOverlaps() throws Exception {
         when(appointmentService.create(any())).thenThrow(new AppointmentConflictException());
 

@@ -1,0 +1,105 @@
+@baseUrl = http://localhost:8080
+@accessToken = paste_access_token_here
+@professionalId = 1
+@appointmentId = 1
+@availabilityRuleId = 1
+@scheduleExceptionId = 1
+
+### Confirmar agendamento
+PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/confirm
+Authorization: Bearer {{accessToken}}
+
+### Registrar check-in
+PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/check-in
+Authorization: Bearer {{accessToken}}
+
+### Concluir atendimento
+PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/complete
+Authorization: Bearer {{accessToken}}
+
+### Registrar falta
+PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/no-show
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "noShowReason": "Cliente não compareceu."
+}
+
+### Criar regra semanal de disponibilidade
+POST {{baseUrl}}/api/v1/professionals/{{professionalId}}/availability-rules
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "08:00:00",
+  "endTime": "12:00:00"
+}
+
+### Listar regras semanais
+GET {{baseUrl}}/api/v1/professionals/{{professionalId}}/availability-rules
+Authorization: Bearer {{accessToken}}
+
+### Atualizar regra semanal
+PUT {{baseUrl}}/api/v1/professionals/{{professionalId}}/availability-rules/{{availabilityRuleId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "08:00:00",
+  "endTime": "17:00:00",
+  "active": true
+}
+
+### Inativar regra semanal
+DELETE {{baseUrl}}/api/v1/professionals/{{professionalId}}/availability-rules/{{availabilityRuleId}}
+Authorization: Bearer {{accessToken}}
+
+### Criar bloqueio pontual
+POST {{baseUrl}}/api/v1/professionals/{{professionalId}}/schedule-exceptions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "date": "2030-01-21",
+  "startTime": "08:00:00",
+  "endTime": "12:00:00",
+  "type": "BLOCKED",
+  "reason": "Folga."
+}
+
+### Criar disponibilidade extra
+POST {{baseUrl}}/api/v1/professionals/{{professionalId}}/schedule-exceptions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "date": "2030-01-22",
+  "startTime": "18:00:00",
+  "endTime": "20:00:00",
+  "type": "AVAILABLE",
+  "reason": "Horário extra."
+}
+
+### Listar exceções por período
+GET {{baseUrl}}/api/v1/professionals/{{professionalId}}/schedule-exceptions?from=2030-01-20&to=2030-01-31
+Authorization: Bearer {{accessToken}}
+
+### Atualizar exceção
+PUT {{baseUrl}}/api/v1/professionals/{{professionalId}}/schedule-exceptions/{{scheduleExceptionId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "date": "2030-01-21",
+  "startTime": "09:00:00",
+  "endTime": "12:00:00",
+  "type": "BLOCKED",
+  "reason": "Folga parcial."
+}
+
+### Remover exceção
+DELETE {{baseUrl}}/api/v1/professionals/{{professionalId}}/schedule-exceptions/{{scheduleExceptionId}}
+Authorization: Bearer {{accessToken}}

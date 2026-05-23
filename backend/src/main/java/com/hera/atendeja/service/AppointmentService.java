@@ -2,6 +2,7 @@ package com.hera.atendeja.service;
 
 import com.hera.atendeja.dto.appointment.AppointmentCancelRequest;
 import com.hera.atendeja.dto.appointment.AppointmentCreateRequest;
+import com.hera.atendeja.dto.appointment.AppointmentNoShowRequest;
 import com.hera.atendeja.dto.appointment.AppointmentRescheduleRequest;
 import com.hera.atendeja.dto.appointment.AppointmentResponse;
 import com.hera.atendeja.entity.Appointment;
@@ -20,7 +21,6 @@ import com.hera.atendeja.repository.ServiceCatalogRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,26 +41,30 @@ public class AppointmentService {
             AppointmentStatus.NO_SHOW
     );
 
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Sao_Paulo");
+    private static final Instant MIN_SEARCH_INSTANT = Instant.parse("1900-01-01T00:00:00Z");
+    private static final Instant MAX_SEARCH_INSTANT = Instant.parse("9999-12-31T23:59:59Z");
 
     private final AppointmentRepository appointmentRepository;
     private final CustomerRepository customerRepository;
     private final ProfessionalRepository professionalRepository;
     private final ServiceCatalogRepository serviceCatalogRepository;
     private final AppointmentMapper appointmentMapper;
+    private final BusinessTime businessTime;
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
             CustomerRepository customerRepository,
             ProfessionalRepository professionalRepository,
             ServiceCatalogRepository serviceCatalogRepository,
-            AppointmentMapper appointmentMapper
+            AppointmentMapper appointmentMapper,
+            BusinessTime businessTime
     ) {
         this.appointmentRepository = appointmentRepository;
         this.customerRepository = customerRepository;
         this.professionalRepository = professionalRepository;
         this.serviceCatalogRepository = serviceCatalogRepository;
         this.appointmentMapper = appointmentMapper;
+        this.businessTime = businessTime;
     }
 
     @Transactional(readOnly = true)
@@ -72,8 +76,8 @@ public class AppointmentService {
             AppointmentStatus status,
             Pageable pageable
     ) {
-        Instant dayStart = date == null ? null : date.atStartOfDay(BUSINESS_ZONE).toInstant();
-        Instant dayEnd = date == null ? null : date.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant();
+        Instant dayStart = date == null ? MIN_SEARCH_INSTANT : businessTime.startOfDay(date);
+        Instant dayEnd = date == null ? MAX_SEARCH_INSTANT : businessTime.endOfDay(date);
         return appointmentRepository.search(
                         professionalId,
                         customerId,
@@ -142,6 +146,61 @@ public class AppointmentService {
         return appointmentMapper.toResponse(appointment);
     }
 
+    @Transactional
+    public AppointmentResponse confirm(Long id) {
+        Appointment appointment = getById(id);
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new BusinessRuleException("Somente agendamentos pendentes podem ser confirmados.");
+        }
+        ensureAppointmentIsOpen(appointment, "confirmado");
+
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        return appointmentMapper.toResponse(appointment);
+    }
+
+    @Transactional
+    public AppointmentResponse checkIn(Long id) {
+        Appointment appointment = getById(id);
+        if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+            throw new BusinessRuleException("Somente agendamentos confirmados podem registrar check-in.");
+        }
+        if (!businessTime.isCurrentBusinessDate(appointment.getStartAt())) {
+            throw new BusinessRuleException("Check-in só pode ser registrado no dia do agendamento.");
+        }
+
+        appointment.setStatus(AppointmentStatus.CHECKED_IN);
+        appointment.setCheckedInAt(businessTime.now());
+        return appointmentMapper.toResponse(appointment);
+    }
+
+    @Transactional
+    public AppointmentResponse complete(Long id) {
+        Appointment appointment = getById(id);
+        if (appointment.getStatus() != AppointmentStatus.CHECKED_IN
+                && appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+            throw new BusinessRuleException("Somente agendamentos confirmados ou com check-in podem ser concluídos.");
+        }
+
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        return appointmentMapper.toResponse(appointment);
+    }
+
+    @Transactional
+    public AppointmentResponse noShow(Long id, AppointmentNoShowRequest request) {
+        Appointment appointment = getById(id);
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED
+                && appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+            throw new BusinessRuleException("Somente agendamentos pendentes ou confirmados podem ser marcados como falta.");
+        }
+        if (appointment.getEndAt().isAfter(businessTime.now())) {
+            throw new BusinessRuleException("Falta só pode ser registrada após o horário final do agendamento.");
+        }
+
+        appointment.setStatus(AppointmentStatus.NO_SHOW);
+        appointment.setNoShowReason(request == null ? null : normalizeOptional(request.noShowReason()));
+        return appointmentMapper.toResponse(appointment);
+    }
+
     private void ensureNoScheduleConflict(Long ignoredAppointmentId, Long professionalId, Instant startAt, Instant endAt) {
         boolean hasConflict = appointmentRepository.existsScheduleConflict(
                 professionalId,
@@ -158,6 +217,12 @@ public class AppointmentService {
     private Instant calculateEndAt(Instant startAt, ServiceCatalog service) {
         long totalMinutes = service.getDurationMinutes() + service.getBufferMinutes();
         return startAt.plus(Duration.ofMinutes(totalMinutes));
+    }
+
+    private void ensureAppointmentIsOpen(Appointment appointment, String action) {
+        if (!appointment.getEndAt().isAfter(businessTime.now())) {
+            throw new BusinessRuleException("Agendamento encerrado não pode ser " + action + ".");
+        }
     }
 
     private void ensureAppointmentCanChange(Appointment appointment) {
@@ -208,5 +273,12 @@ public class AppointmentService {
     private Appointment getById(Long id) {
         return appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento", id));
+    }
+
+    private String normalizeOptional(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        return text.trim();
     }
 }
