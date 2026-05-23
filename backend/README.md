@@ -17,7 +17,7 @@ O backend contém a base das Fases 1, 2, 3, pré-Fase 4 e Fase 4:
 - Endpoints de negócio protegidos por Spring Security.
 - Testes unitários, testes de controller com MockMvc e integração com PostgreSQL real via Testcontainers.
 
-Frontend React e deploy ainda não foram implementados neste backend.
+Frontend React existe em `../frontend`; deploy ainda não foi implementado.
 
 ## Stack Atual
 
