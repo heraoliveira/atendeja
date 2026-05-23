@@ -1,0 +1,19 @@
+@baseUrl = http://localhost:8080
+@accessToken = paste_access_token_here
+@professionalId = 1
+
+### Dashboard diário do dia atual de negócio
+GET {{baseUrl}}/api/v1/dashboard/daily
+Authorization: Bearer {{accessToken}}
+
+### Dashboard diário por data
+GET {{baseUrl}}/api/v1/dashboard/daily?date=2030-01-21
+Authorization: Bearer {{accessToken}}
+
+### Dashboard diário por profissional
+GET {{baseUrl}}/api/v1/dashboard/daily?date=2030-01-21&professionalId={{professionalId}}
+Authorization: Bearer {{accessToken}}
+
+### Agenda diária paginada usada em conjunto com o dashboard
+GET {{baseUrl}}/api/v1/appointments?date=2030-01-21&professionalId={{professionalId}}&page=0&size=20&sort=startAt,asc
+Authorization: Bearer {{accessToken}}

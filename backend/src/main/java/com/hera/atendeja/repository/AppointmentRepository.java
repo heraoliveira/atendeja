@@ -4,6 +4,7 @@ import com.hera.atendeja.entity.Appointment;
 import com.hera.atendeja.entity.AppointmentStatus;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,8 +44,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
               AND (:customerId IS NULL OR appointment.customer.id = :customerId)
               AND (:serviceId IS NULL OR appointment.service.id = :serviceId)
               AND (:status IS NULL OR appointment.status = :status)
-              AND (:dayStart IS NULL OR appointment.startAt >= :dayStart)
-              AND (:dayEnd IS NULL OR appointment.startAt < :dayEnd)
+              AND appointment.startAt >= :dayStart
+              AND appointment.startAt < :dayEnd
             """)
     Page<Appointment> search(
             @Param("professionalId") Long professionalId,
@@ -54,5 +55,19 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             @Param("dayStart") Instant dayStart,
             @Param("dayEnd") Instant dayEnd,
             Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    @Query("""
+            SELECT appointment
+            FROM Appointment appointment
+            WHERE appointment.startAt < :dayEnd
+              AND appointment.endAt > :dayStart
+              AND (:professionalId IS NULL OR appointment.professional.id = :professionalId)
+            """)
+    List<Appointment> findForDailyDashboard(
+            @Param("dayStart") Instant dayStart,
+            @Param("dayEnd") Instant dayEnd,
+            @Param("professionalId") Long professionalId
     );
 }

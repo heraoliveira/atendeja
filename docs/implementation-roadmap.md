@@ -54,16 +54,30 @@ Critérios de aceite:
 - Endpoints protegidos rejeitam requisições sem token.
 - Permissões por role funcionam.
 
+## Pré-Fase 4 - Fluxo operacional e calendário profissional
+
+Status: concluída.
+
+Objetivo: preparar o domínio do dashboard com transições operacionais de agendamento e disponibilidade real por profissional.
+
+Critérios de aceite:
+
+- Confirmação, check-in, conclusão e falta aplicam transições válidas.
+- Regras semanais e exceções por data persistem com constraints de período.
+- Escrita do calendário profissional exige role `ADMIN`.
+- Dashboard ainda não é exposto nesta etapa.
+
 ## Fase 4 - Dashboard e filtros
 
-Status: próxima fase.
+Status: concluída.
 
 Objetivo: implementar agenda diária filtrada e indicadores simples de ocupação, cancelamentos e no-show.
 
 Critérios de aceite:
 
 - Listagem paginada e filtrada.
-- Indicadores diários corretos.
+- Indicadores diários corretos com total por status, cancelamentos e no-show.
+- Ocupação calculada por disponibilidade real, exceções `BLOCKED` e `AVAILABLE` e normalização de intervalos.
 - Consultas com índices adequados.
 
 ## Fase 5 - Frontend React
