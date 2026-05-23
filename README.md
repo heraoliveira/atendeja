@@ -2,7 +2,7 @@
 
 AtendeJá é uma aplicação full stack de agenda e fila de atendimento para prestadores locais, como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas.
 
-> Status atual: Fase 3 implementada no backend. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional e autenticação Bearer JWT com autorização por roles. Dashboard, frontend React e deploy ainda não foram implementados.
+> Status atual: Fase 4 implementada no backend. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional e dashboard diário. Frontend React e deploy ainda não foram implementados.
 
 ## Estado Atual
 
@@ -47,9 +47,26 @@ Implementado na Fase 3:
 - Bearer JWT documentado no Swagger/OpenAPI.
 - Bootstrap local opcional de usuários de demonstração sem senha em migration.
 
+Implementado na pré-Fase 4:
+
+- Transições explícitas de confirmação, check-in, conclusão e falta em agendamentos.
+- Dia de negócio em `America/Sao_Paulo` reutilizado pela agenda operacional.
+- Migration `V5__professional_calendar.sql` com regras semanais de disponibilidade e exceções por data.
+- Endpoints para disponibilidade recorrente e exceções `AVAILABLE` ou `BLOCKED` por profissional.
+- Constraints e testes com PostgreSQL real para períodos de calendário.
+
+Implementado na Fase 4:
+
+- Endpoint `GET /api/v1/dashboard/daily`.
+- Filtros por `date` e `professionalId`.
+- Indicadores diários de total de agendamentos, totais por status, cancelamentos e faltas.
+- Cálculo de minutos disponíveis a partir da disponibilidade real do calendário profissional.
+- Cálculo de minutos ocupados com status `SCHEDULED`, `CONFIRMED`, `CHECKED_IN` e `COMPLETED`.
+- Percentual de ocupação com proteção contra divisão por zero.
+- Testes unitários, de controller, segurança e integração com PostgreSQL real para o dashboard.
+
 Ainda planejado:
 
-- Fase 4: dashboard e filtros operacionais avançados.
 - Fase 5: frontend React + TypeScript.
 - Fase 6: ampliação de testes automatizados.
 - Fase 7: Docker Compose completo com API/frontend, CI e preparação para deploy.
@@ -222,7 +239,7 @@ docker compose down -v
 | `DEMO_ADMIN_PASSWORD` | Senha local usada para gerar hash BCrypt do admin no bootstrap. |
 | `DEMO_ATTENDANT_EMAIL` | E-mail do usuário local com role `ATTENDANT`. |
 | `DEMO_ATTENDANT_PASSWORD` | Senha local usada para gerar hash BCrypt do atendente no bootstrap. |
-| `CORS_ALLOWED_ORIGINS` | Planejada para integração futura com frontend; ainda não aplicada. |
+| `CORS_ALLOWED_ORIGINS` | Origens permitidas para chamadas browser/API, separadas por vírgula. |
 
 ## Endpoints Implementados
 
@@ -277,6 +294,29 @@ docker compose down -v
 | `POST` | `/api/v1/appointments` | Cria agendamento. |
 | `PATCH` | `/api/v1/appointments/{id}/reschedule` | Remarca agendamento. |
 | `PATCH` | `/api/v1/appointments/{id}/cancel` | Cancela agendamento. |
+| `PATCH` | `/api/v1/appointments/{id}/confirm` | Confirma agendamento pendente. |
+| `PATCH` | `/api/v1/appointments/{id}/check-in` | Registra check-in em agendamento confirmado do dia. |
+| `PATCH` | `/api/v1/appointments/{id}/complete` | Conclui agendamento confirmado ou com check-in. |
+| `PATCH` | `/api/v1/appointments/{id}/no-show` | Registra falta após o horário final previsto. |
+
+### Calendário Profissional
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| `GET` | `/api/v1/professionals/{professionalId}/availability-rules` | Lista regras semanais de disponibilidade. |
+| `POST` | `/api/v1/professionals/{professionalId}/availability-rules` | Cria regra semanal de disponibilidade. |
+| `PUT` | `/api/v1/professionals/{professionalId}/availability-rules/{id}` | Atualiza regra semanal. |
+| `DELETE` | `/api/v1/professionals/{professionalId}/availability-rules/{id}` | Inativa regra semanal. |
+| `GET` | `/api/v1/professionals/{professionalId}/schedule-exceptions?from=&to=` | Lista exceções por período. |
+| `POST` | `/api/v1/professionals/{professionalId}/schedule-exceptions` | Cria exceção pontual de agenda. |
+| `PUT` | `/api/v1/professionals/{professionalId}/schedule-exceptions/{id}` | Atualiza exceção pontual. |
+| `DELETE` | `/api/v1/professionals/{professionalId}/schedule-exceptions/{id}` | Remove exceção pontual. |
+
+### Dashboard
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| `GET` | `/api/v1/dashboard/daily?date=&professionalId=` | Consulta indicadores diários de agenda e ocupação. |
 
 Filtros disponíveis em `GET /api/v1/appointments`:
 
@@ -288,6 +328,8 @@ Filtros disponíveis em `GET /api/v1/appointments`:
 - Parâmetros de paginação do Spring, como `page`, `size` e `sort`.
 
 Todos os endpoints de negócio exigem Bearer Token. O health check, Swagger/OpenAPI e o endpoint de login permanecem públicos.
+
+O backend aplica CORS em `/api/**` com base em `CORS_ALLOWED_ORIGINS`. O valor padrão local é `http://localhost:5173`, previsto para o frontend React da Fase 5.
 
 ## Login E Bearer Token
 
@@ -316,7 +358,10 @@ Authorization: Bearer <accessToken>
 | Criar, atualizar e inativar clientes | Permitido | Permitido |
 | Criar, atualizar e inativar profissionais | Permitido | Negado com `403` |
 | Criar, atualizar e inativar serviços | Permitido | Negado com `403` |
-| Criar, remarcar e cancelar agendamentos | Permitido | Permitido |
+| Criar, remarcar, cancelar e avançar status operacionais de agendamentos | Permitido | Permitido |
+| Consultar disponibilidade e exceções de agenda | Permitido | Permitido |
+| Alterar disponibilidade e exceções de agenda | Permitido | Negado com `403` |
+| Consultar dashboard diário | Permitido | Permitido |
 
 ## Exemplo De Criação De Agendamento
 
@@ -369,7 +414,35 @@ Os status existentes no backend são:
 - `CANCELED`
 - `NO_SHOW`
 
-Nesta fase, a API implementa criação, listagem, detalhe, remarcação e cancelamento. Check-in, conclusão de atendimento, falta e dashboard ficam para fases posteriores.
+Nesta pré-Fase 4, a API também confirma agendamentos, registra check-in, conclui atendimentos e marca falta.
+
+## Calendário Profissional
+
+Regras de disponibilidade definem janelas semanais recorrentes por profissional. Exceções de agenda complementam esse calendário por data:
+
+- `BLOCKED`: remove capacidade de um período pontual, como folga ou bloqueio.
+- `AVAILABLE`: adiciona capacidade pontual fora da regra recorrente.
+
+As janelas exigem `endTime` posterior a `startTime`. O dashboard diário usa essas janelas reais e normaliza sobreposições antes de transformar capacidade em percentual.
+
+## Dashboard Diário
+
+O endpoint `GET /api/v1/dashboard/daily` aceita:
+
+- `date`: data do dia operacional em formato `YYYY-MM-DD`. Quando ausente, usa a data atual em `America/Sao_Paulo`.
+- `professionalId`: id do profissional para filtrar indicadores e capacidade. Quando ausente, considera todos os profissionais ativos.
+
+Indicadores retornados:
+
+- `totalAppointments`: total de agendamentos do dia.
+- `appointmentsByStatus`: totais por status.
+- `cancellations`: quantidade de agendamentos cancelados.
+- `noShows`: quantidade de faltas.
+- `availableMinutes`: minutos disponíveis calculados por regras semanais e exceções.
+- `occupiedMinutes`: minutos ocupados por `SCHEDULED`, `CONFIRMED`, `CHECKED_IN` e `COMPLETED`.
+- `occupancyPercentage`: percentual de ocupação, retornando `0.00` quando não houver minutos disponíveis.
+
+O cálculo de disponibilidade parte das regras semanais ativas do profissional. Exceções `BLOCKED` removem capacidade e exceções `AVAILABLE` adicionam capacidade pontual. Intervalos sobrepostos são normalizados para evitar dupla contagem.
 
 ## Roadmap
 
@@ -378,10 +451,11 @@ Nesta fase, a API implementa criação, listagem, detalhe, remarcação e cancel
 3. Estabilização da Fase 1: documentação, Maven Wrapper, Testcontainers e testes ampliados.
 4. Fase 2: agendamentos e regra de conflito.
 5. Fase 3: autenticação JWT e autorização por roles.
-6. Fase 4: dashboard e filtros.
-7. Fase 5: frontend React.
-8. Fase 6: testes automatizados ampliados.
-9. Fase 7: Docker Compose completo, documentação final e preparação para deploy.
+6. Pré-Fase 4: transições operacionais e calendário profissional.
+7. Fase 4: dashboard diário e filtros operacionais.
+8. Fase 5: frontend React.
+9. Fase 6: testes automatizados ampliados.
+10. Fase 7: Docker Compose completo, documentação final e preparação para deploy.
 
 ## Documentação Complementar
 
@@ -390,6 +464,8 @@ Nesta fase, a API implementa criação, listagem, detalhe, remarcação e cancel
 - [Exemplos HTTP da Fase 1](docs/api/phase-1-cruds.http)
 - [Exemplos HTTP da Fase 2](docs/api/phase-2-appointments.http)
 - [Exemplos HTTP da Fase 3](docs/api/phase-3-auth.http)
+- [Exemplos HTTP da pré-Fase 4](docs/api/pre-phase-4-operational-calendar.http)
+- [Exemplos HTTP da Fase 4](docs/api/phase-4-dashboard.http)
 - [ADR 0001 - Arquitetura e stack](docs/adr/0001-architecture-and-stack.md)
 - [ADR 0002 - Regra de conflito de agenda](docs/adr/0002-schedule-conflict-rule.md)
 - [ADR 0003 - Autenticação JWT e roles](docs/adr/0003-authentication-and-roles.md)

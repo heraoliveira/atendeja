@@ -4,18 +4,20 @@ API REST do AtendeJá, construída com Java 17, Spring Boot, PostgreSQL e Flyway
 
 ## Status Atual
 
-O backend contém a base das Fases 1, 2 e 3:
+O backend contém a base das Fases 1, 2, 3, pré-Fase 4 e Fase 4:
 
 - CRUDs de clientes, profissionais e serviços.
 - Listagens paginadas com contrato `PageResponse<T>`.
-- Migrations Flyway para o schema inicial, índices e agendamentos.
-- Módulo de agendamentos com criação, listagem, detalhe, remarcação e cancelamento.
+- Migrations Flyway para o schema inicial, índices, agendamentos, usuários e calendário profissional.
+- Módulo de agendamentos com criação, listagem, detalhe, remarcação, cancelamento e transições operacionais.
 - Regra de conflito de horários por profissional, usando intervalo semiaberto `[startAt, endAt)`.
 - Login Bearer JWT com expiração configurável, senhas BCrypt e roles `ADMIN` e `ATTENDANT`.
+- Disponibilidade semanal e exceções por data para profissionais.
+- Dashboard diário com indicadores de agenda, cancelamentos, faltas e ocupação.
 - Endpoints de negócio protegidos por Spring Security.
 - Testes unitários, testes de controller com MockMvc e integração com PostgreSQL real via Testcontainers.
 
-Dashboard, frontend React e deploy ainda não foram implementados neste backend.
+Frontend React e deploy ainda não foram implementados neste backend.
 
 ## Stack Atual
 
@@ -59,6 +61,7 @@ URLs locais:
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
 Antes de iniciar a API, configure `JWT_SECRET` com ao menos 32 caracteres. Usuários de demonstração locais são criados somente quando `DEMO_AUTH_USERS_ENABLED=true` e suas senhas são informadas por ambiente.
+Para integração com frontend local, configure `CORS_ALLOWED_ORIGINS`; o padrão aceito é `http://localhost:5173`.
 
 ## Testes
 
@@ -118,6 +121,29 @@ mvn test -Dtest=PersistenceIntegrationTest
 |---|---|---|
 | `POST` | `/api/v1/auth/login` | Autentica usuário ativo e retorna Bearer JWT. |
 
+## Endpoints Da Pré-Fase 4
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| `PATCH` | `/api/v1/appointments/{id}/confirm` | Confirma agendamento pendente. |
+| `PATCH` | `/api/v1/appointments/{id}/check-in` | Registra check-in em agendamento confirmado do dia. |
+| `PATCH` | `/api/v1/appointments/{id}/complete` | Conclui agendamento confirmado ou com check-in. |
+| `PATCH` | `/api/v1/appointments/{id}/no-show` | Registra falta após o horário final previsto. |
+| `GET` | `/api/v1/professionals/{professionalId}/availability-rules` | Lista disponibilidade semanal. |
+| `POST` | `/api/v1/professionals/{professionalId}/availability-rules` | Cria regra semanal. |
+| `PUT` | `/api/v1/professionals/{professionalId}/availability-rules/{id}` | Atualiza regra semanal. |
+| `DELETE` | `/api/v1/professionals/{professionalId}/availability-rules/{id}` | Inativa regra semanal. |
+| `GET` | `/api/v1/professionals/{professionalId}/schedule-exceptions?from=&to=` | Lista exceções por período. |
+| `POST` | `/api/v1/professionals/{professionalId}/schedule-exceptions` | Cria exceção de agenda. |
+| `PUT` | `/api/v1/professionals/{professionalId}/schedule-exceptions/{id}` | Atualiza exceção de agenda. |
+| `DELETE` | `/api/v1/professionals/{professionalId}/schedule-exceptions/{id}` | Remove exceção de agenda. |
+
+## Endpoints Da Fase 4
+
+| Método | Rota | Objetivo |
+|---|---|---|
+| `GET` | `/api/v1/dashboard/daily?date=&professionalId=` | Consulta dashboard diário com indicadores de agenda e ocupação. |
+
 Envie o token retornado em `Authorization: Bearer <accessToken>` para os endpoints de negócio.
 
 ## Roles
@@ -127,7 +153,10 @@ Envie o token retornado em `Authorization: Bearer <accessToken>` para os endpoin
 | Consultar clientes, profissionais, serviços e agendamentos | Permitido | Permitido |
 | Criar, atualizar e inativar clientes | Permitido | Permitido |
 | Criar, atualizar e inativar profissionais ou serviços | Permitido | Negado com `403` |
-| Criar, remarcar e cancelar agendamentos | Permitido | Permitido |
+| Criar, remarcar, cancelar e avançar status de agendamentos | Permitido | Permitido |
+| Consultar disponibilidade e exceções de agenda | Permitido | Permitido |
+| Alterar disponibilidade e exceções de agenda | Permitido | Negado com `403` |
+| Consultar dashboard diário | Permitido | Permitido |
 
 ## Regra De Conflito
 
@@ -136,3 +165,13 @@ Um profissional não pode ter dois agendamentos ativos em horários sobrepostos.
 O intervalo é semiaberto: `[startAt, endAt)`. Assim, um agendamento pode começar exatamente no horário em que outro termina.
 
 Agendamentos com status `CANCELED` ou `NO_SHOW` não bloqueiam novos horários.
+
+## Calendário Profissional
+
+Regras semanais definem a disponibilidade recorrente. Exceções por data usam `BLOCKED` para remover capacidade pontual e `AVAILABLE` para adicionar um período extra. Essas janelas são a base do percentual de ocupação da Fase 4.
+
+## Dashboard Diário
+
+`GET /api/v1/dashboard/daily` aceita `date` e `professionalId`. Quando `date` não é informado, a API usa o dia de negócio atual em `America/Sao_Paulo`.
+
+O cálculo retorna total de agendamentos, totais por status, cancelamentos, faltas, minutos disponíveis, minutos ocupados e percentual de ocupação. Minutos ocupados consideram `SCHEDULED`, `CONFIRMED`, `CHECKED_IN` e `COMPLETED`; `CANCELED` não ocupa agenda e `NO_SHOW` entra como indicador próprio.

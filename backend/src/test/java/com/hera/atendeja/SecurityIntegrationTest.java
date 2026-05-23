@@ -1,7 +1,9 @@
 package com.hera.atendeja;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -9,8 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hera.atendeja.entity.UserAccount;
 import com.hera.atendeja.entity.UserRole;
 import com.hera.atendeja.repository.AppointmentRepository;
+import com.hera.atendeja.repository.AvailabilityRuleRepository;
 import com.hera.atendeja.repository.CustomerRepository;
 import com.hera.atendeja.repository.ProfessionalRepository;
+import com.hera.atendeja.repository.ScheduleExceptionRepository;
 import com.hera.atendeja.repository.ServiceCatalogRepository;
 import com.hera.atendeja.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +56,12 @@ class SecurityIntegrationTest {
     private AppointmentRepository appointmentRepository;
 
     @Autowired
+    private AvailabilityRuleRepository availabilityRuleRepository;
+
+    @Autowired
+    private ScheduleExceptionRepository scheduleExceptionRepository;
+
+    @Autowired
     private CustomerRepository customerRepository;
 
     @Autowired
@@ -70,6 +80,8 @@ class SecurityIntegrationTest {
     @BeforeEach
     void cleanDatabase() {
         appointmentRepository.deleteAll();
+        scheduleExceptionRepository.deleteAll();
+        availabilityRuleRepository.deleteAll();
         serviceCatalogRepository.deleteAll();
         professionalRepository.deleteAll();
         customerRepository.deleteAll();
@@ -121,6 +133,24 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void shouldRejectDashboardWithoutToken() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboard/daily")
+                        .param("date", "2030-01-21"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void shouldAllowCorsPreflightFromConfiguredFrontendOrigin() throws Exception {
+        mockMvc.perform(options("/api/v1/dashboard/daily")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "Authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+    }
+
+    @Test
     void shouldAllowBusinessEndpointWithValidToken() throws Exception {
         createUser("attendant@atendeja.local", "attendant-pass", UserRole.ATTENDANT, true);
         String token = login("attendant@atendeja.local", "attendant-pass");
@@ -128,6 +158,18 @@ class SecurityIntegrationTest {
         mockMvc.perform(get("/api/v1/services")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldAllowAttendantToReadDashboard() throws Exception {
+        createUser("attendant@atendeja.local", "attendant-pass", UserRole.ATTENDANT, true);
+        String token = login("attendant@atendeja.local", "attendant-pass");
+
+        mockMvc.perform(get("/api/v1/dashboard/daily")
+                        .header("Authorization", "Bearer " + token)
+                        .param("date", "2030-01-21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2030-01-21"));
     }
 
     @Test
@@ -151,6 +193,25 @@ class SecurityIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(servicePayload("Serviço restrito")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenAttendantTriesToManageAvailability() throws Exception {
+        createUser("attendant@atendeja.local", "attendant-pass", UserRole.ATTENDANT, true);
+        String token = login("attendant@atendeja.local", "attendant-pass");
+
+        mockMvc.perform(post("/api/v1/professionals/1/availability-rules")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "dayOfWeek": "MONDAY",
+                                  "startTime": "08:00:00",
+                                  "endTime": "12:00:00"
+                                }
+                                """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }

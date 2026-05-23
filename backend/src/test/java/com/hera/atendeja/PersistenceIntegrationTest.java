@@ -4,15 +4,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.hera.atendeja.entity.Appointment;
 import com.hera.atendeja.entity.AppointmentStatus;
+import com.hera.atendeja.entity.AvailabilityRule;
 import com.hera.atendeja.entity.Customer;
 import com.hera.atendeja.entity.Professional;
+import com.hera.atendeja.entity.ScheduleException;
+import com.hera.atendeja.entity.ScheduleExceptionType;
 import com.hera.atendeja.entity.ServiceCatalog;
 import com.hera.atendeja.repository.AppointmentRepository;
+import com.hera.atendeja.repository.AvailabilityRuleRepository;
 import com.hera.atendeja.repository.CustomerRepository;
 import com.hera.atendeja.repository.ProfessionalRepository;
+import com.hera.atendeja.repository.ScheduleExceptionRepository;
 import com.hera.atendeja.repository.ServiceCatalogRepository;
+import com.hera.atendeja.service.DashboardService;
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +57,16 @@ class PersistenceIntegrationTest {
     private AppointmentRepository appointmentRepository;
 
     @Autowired
+    private AvailabilityRuleRepository availabilityRuleRepository;
+
+    @Autowired
+    private ScheduleExceptionRepository scheduleExceptionRepository;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private DashboardService dashboardService;
 
     @DynamicPropertySource
     static void postgresProperties(DynamicPropertyRegistry registry) {
@@ -60,6 +78,8 @@ class PersistenceIntegrationTest {
     @BeforeEach
     void cleanDatabase() {
         appointmentRepository.deleteAll();
+        scheduleExceptionRepository.deleteAll();
+        availabilityRuleRepository.deleteAll();
         serviceCatalogRepository.deleteAll();
         professionalRepository.deleteAll();
         customerRepository.deleteAll();
@@ -97,7 +117,7 @@ class PersistenceIntegrationTest {
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = TRUE",
                 Integer.class
         );
-        assertThat(appliedMigrations).isEqualTo(4);
+        assertThat(appliedMigrations).isEqualTo(5);
     }
 
     @Test
@@ -222,5 +242,173 @@ class PersistenceIntegrationTest {
 
         assertThat(canceledAppointmentConflict).isFalse();
         assertThat(noShowAppointmentConflict).isFalse();
+    }
+
+    @Test
+    void shouldFilterAppointmentsWithPaginationAndOperationalFilters() {
+        Customer customer = new Customer();
+        customer.setName("Cliente Filtro");
+        customer.setPhone("21999990010");
+        customerRepository.save(customer);
+
+        Professional professional = new Professional();
+        professional.setName("Profissional Filtro");
+        professional.setPhone("21999990011");
+        professionalRepository.save(professional);
+
+        ServiceCatalog service = new ServiceCatalog();
+        service.setName("Consulta filtro");
+        service.setDurationMinutes(45);
+        service.setBufferMinutes(15);
+        service.setPrice(new BigDecimal("150.00"));
+        serviceCatalogRepository.save(service);
+
+        Appointment scheduled = new Appointment();
+        scheduled.setCustomer(customer);
+        scheduled.setProfessional(professional);
+        scheduled.setService(service);
+        scheduled.setStartAt(Instant.parse("2030-01-21T12:00:00Z"));
+        scheduled.setEndAt(Instant.parse("2030-01-21T13:00:00Z"));
+        scheduled.setStatus(AppointmentStatus.SCHEDULED);
+        appointmentRepository.save(scheduled);
+
+        Appointment completed = new Appointment();
+        completed.setCustomer(customer);
+        completed.setProfessional(professional);
+        completed.setService(service);
+        completed.setStartAt(Instant.parse("2030-01-21T14:00:00Z"));
+        completed.setEndAt(Instant.parse("2030-01-21T15:00:00Z"));
+        completed.setStatus(AppointmentStatus.COMPLETED);
+        appointmentRepository.save(completed);
+
+        var page = appointmentRepository.search(
+                professional.getId(),
+                customer.getId(),
+                service.getId(),
+                AppointmentStatus.SCHEDULED,
+                Instant.parse("2030-01-21T03:00:00Z"),
+                Instant.parse("2030-01-22T03:00:00Z"),
+                PageRequest.of(0, 10)
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getStatus()).isEqualTo(AppointmentStatus.SCHEDULED);
+    }
+
+    @Test
+    void shouldPersistProfessionalCalendarAndEnforcePeriodConstraints() {
+        Professional professional = new Professional();
+        professional.setName("Profissional Calendario");
+        professional.setPhone("21999990002");
+        professionalRepository.save(professional);
+
+        AvailabilityRule availabilityRule = new AvailabilityRule();
+        availabilityRule.setProfessional(professional);
+        availabilityRule.setDayOfWeek(DayOfWeek.MONDAY);
+        availabilityRule.setStartTime(LocalTime.of(8, 0));
+        availabilityRule.setEndTime(LocalTime.of(12, 0));
+        availabilityRuleRepository.saveAndFlush(availabilityRule);
+
+        ScheduleException scheduleException = new ScheduleException();
+        scheduleException.setProfessional(professional);
+        scheduleException.setDate(LocalDate.of(2030, 1, 20));
+        scheduleException.setStartTime(LocalTime.of(13, 0));
+        scheduleException.setEndTime(LocalTime.of(15, 0));
+        scheduleException.setType(ScheduleExceptionType.AVAILABLE);
+        scheduleException.setReason("Atendimento extra");
+        scheduleExceptionRepository.saveAndFlush(scheduleException);
+
+        AvailabilityRule invalidRule = new AvailabilityRule();
+        invalidRule.setProfessional(professional);
+        invalidRule.setDayOfWeek(DayOfWeek.TUESDAY);
+        invalidRule.setStartTime(LocalTime.of(18, 0));
+        invalidRule.setEndTime(LocalTime.of(18, 0));
+
+        Assertions.assertThrows(
+                DataIntegrityViolationException.class,
+                () -> availabilityRuleRepository.saveAndFlush(invalidRule)
+        );
+
+        assertThat(availabilityRuleRepository.count()).isEqualTo(1);
+        assertThat(scheduleExceptionRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldCalculateDailyDashboardUsingPostgreSQLData() {
+        LocalDate dashboardDate = LocalDate.of(2030, 1, 21);
+
+        Customer customer = new Customer();
+        customer.setName("Cliente Dashboard");
+        customer.setPhone("21999990020");
+        customerRepository.save(customer);
+
+        Professional professional = new Professional();
+        professional.setName("Profissional Dashboard");
+        professional.setPhone("21999990021");
+        professionalRepository.save(professional);
+
+        ServiceCatalog service = new ServiceCatalog();
+        service.setName("Consulta dashboard");
+        service.setDurationMinutes(45);
+        service.setBufferMinutes(15);
+        service.setPrice(new BigDecimal("150.00"));
+        serviceCatalogRepository.save(service);
+
+        AvailabilityRule morning = new AvailabilityRule();
+        morning.setProfessional(professional);
+        morning.setDayOfWeek(dashboardDate.getDayOfWeek());
+        morning.setStartTime(LocalTime.of(8, 0));
+        morning.setEndTime(LocalTime.of(12, 0));
+        availabilityRuleRepository.save(morning);
+
+        AvailabilityRule overlapping = new AvailabilityRule();
+        overlapping.setProfessional(professional);
+        overlapping.setDayOfWeek(dashboardDate.getDayOfWeek());
+        overlapping.setStartTime(LocalTime.of(10, 0));
+        overlapping.setEndTime(LocalTime.of(14, 0));
+        availabilityRuleRepository.save(overlapping);
+
+        ScheduleException blocked = new ScheduleException();
+        blocked.setProfessional(professional);
+        blocked.setDate(dashboardDate);
+        blocked.setStartTime(LocalTime.of(11, 0));
+        blocked.setEndTime(LocalTime.of(12, 0));
+        blocked.setType(ScheduleExceptionType.BLOCKED);
+        scheduleExceptionRepository.save(blocked);
+
+        ScheduleException available = new ScheduleException();
+        available.setProfessional(professional);
+        available.setDate(dashboardDate);
+        available.setStartTime(LocalTime.of(13, 0));
+        available.setEndTime(LocalTime.of(15, 0));
+        available.setType(ScheduleExceptionType.AVAILABLE);
+        scheduleExceptionRepository.save(available);
+
+        Appointment scheduled = new Appointment();
+        scheduled.setCustomer(customer);
+        scheduled.setProfessional(professional);
+        scheduled.setService(service);
+        scheduled.setStartAt(Instant.parse("2030-01-21T12:00:00Z"));
+        scheduled.setEndAt(Instant.parse("2030-01-21T13:00:00Z"));
+        scheduled.setStatus(AppointmentStatus.SCHEDULED);
+        appointmentRepository.save(scheduled);
+
+        Appointment canceled = new Appointment();
+        canceled.setCustomer(customer);
+        canceled.setProfessional(professional);
+        canceled.setService(service);
+        canceled.setStartAt(Instant.parse("2030-01-21T14:00:00Z"));
+        canceled.setEndAt(Instant.parse("2030-01-21T15:00:00Z"));
+        canceled.setStatus(AppointmentStatus.CANCELED);
+        appointmentRepository.save(canceled);
+
+        var response = dashboardService.getDailyDashboard(dashboardDate, professional.getId());
+
+        assertThat(response.totalAppointments()).isEqualTo(2);
+        assertThat(response.cancellations()).isEqualTo(1);
+        assertThat(response.noShows()).isZero();
+        assertThat(response.availableMinutes()).isEqualTo(360);
+        assertThat(response.occupiedMinutes()).isEqualTo(60);
+        assertThat(response.occupancyPercentage()).isEqualByComparingTo(new BigDecimal("16.67"));
     }
 }
