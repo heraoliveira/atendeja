@@ -82,6 +82,8 @@ Critérios de aceite:
 
 ## Fase 5 - Frontend React
 
+Status: concluída.
+
 Objetivo: criar a interface web em React + TypeScript consumindo a API.
 
 Critérios de aceite:
@@ -90,8 +92,13 @@ Critérios de aceite:
 - Agenda diária com filtros.
 - Formulários de cliente, profissional, serviço e agendamento.
 - Mensagens de erro e sucesso em PT-BR.
+- Dashboard diário consumindo a API.
+- Rotas protegidas por autenticação.
+- Ações administrativas ocultas para perfis sem permissão.
 
 ## Fase 6 - Testes automatizados
+
+Status: planejada.
 
 Objetivo: ampliar cobertura dos fluxos críticos.
 
@@ -103,6 +110,8 @@ Critérios de aceite:
 - Fluxos principais do frontend testados.
 
 ## Fase 7 - Docker Compose completo, documentação final e preparação para deploy
+
+Status: planejada.
 
 Objetivo: empacotar API, frontend e banco para execução local completa e preparar documentação de portfólio.
 

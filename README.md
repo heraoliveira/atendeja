@@ -2,7 +2,7 @@
 
 AtendeJá é uma aplicação full stack de agenda e fila de atendimento para prestadores locais, como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas.
 
-> Status atual: Fase 4 implementada no backend. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional e dashboard diário. Frontend React e deploy ainda não foram implementados.
+> Status atual: Fase 5 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário e frontend React + TypeScript funcional. Deploy ainda não foi implementado.
 
 ## Estado Atual
 
@@ -65,9 +65,23 @@ Implementado na Fase 4:
 - Percentual de ocupação com proteção contra divisão por zero.
 - Testes unitários, de controller, segurança e integração com PostgreSQL real para o dashboard.
 
+Implementado na Fase 5:
+
+- Aplicação React + TypeScript em `frontend/` com Vite.
+- React Router com rotas protegidas.
+- React Hook Form nos formulários principais.
+- Login consumindo `POST /api/v1/auth/login`.
+- Armazenamento simples do Bearer Token no browser.
+- Cliente HTTP centralizado com `VITE_API_BASE_URL`.
+- Tratamento de `401`, `403`, erros de validação e conflitos retornados pela API.
+- Dashboard diário com filtros por data e profissional.
+- Agenda diária com filtros, paginação, criação, remarcação, cancelamento e ações operacionais.
+- CRUDs de clientes, profissionais e serviços consumindo os endpoints existentes.
+- Ocultação de ações administrativas para `ATTENDANT`, mantendo a API como fonte real de autorização.
+- Testes básicos de frontend para utilitários e cliente HTTP.
+
 Ainda planejado:
 
-- Fase 5: frontend React + TypeScript.
 - Fase 6: ampliação de testes automatizados.
 - Fase 7: Docker Compose completo com API/frontend, CI e preparação para deploy.
 
@@ -87,14 +101,16 @@ Ainda planejado:
 - OAuth2 Resource Server para Bearer JWT
 - BCrypt
 - JUnit, Mockito, MockMvc e Testcontainers
+- React
+- TypeScript
+- Vite
+- React Router
+- React Hook Form
+- Vitest e React Testing Library
 - Docker Compose para PostgreSQL local
 
 ## Stack Planejada
 
-- React
-- TypeScript
-- React Router
-- React Hook Form
 - Docker Compose completo com API, banco e frontend
 - CI/CD e preparação para deploy
 
@@ -107,7 +123,7 @@ atendeja/
     adr/                decisões técnicas
     api/                exemplos HTTP por fase do backend
     briefing/           contexto do produto e escopo
-  frontend/             placeholder documental; sem código React ainda
+  frontend/             aplicação React + TypeScript da Fase 5
   docker-compose.yml    PostgreSQL local
   .env.example          variáveis de ambiente de exemplo
 ```
@@ -186,6 +202,29 @@ API local:
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
+### Rodar frontend
+
+Em outro terminal, instale as dependências e inicie o Vite:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+No Linux/macOS:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend local:
+
+- Aplicação web: `http://localhost:5173`
+- Variável da API: `VITE_API_BASE_URL=http://localhost:8080`
+
 ### Rodar testes do backend
 
 No Windows PowerShell:
@@ -203,6 +242,14 @@ mvn test
 ```
 
 Os testes de integração usam Testcontainers com PostgreSQL real. Docker precisa estar disponível para a JVM. Testes ignorados em `PersistenceIntegrationTest` não devem ser aceitos como sucesso nesta fase.
+
+### Rodar build e testes do frontend
+
+```bash
+cd frontend
+npm test
+npm run build
+```
 
 ### Verificar Docker Compose
 
@@ -231,7 +278,8 @@ docker compose down -v
 | `POSTGRES_PASSWORD` | Senha do banco. |
 | `POSTGRES_PORT` | Porta exposta localmente para o PostgreSQL. |
 | `API_PORT` | Porta da API Spring Boot. |
-| `FRONTEND_PORT` | Porta planejada para o futuro frontend React. |
+| `FRONTEND_PORT` | Porta local usada pelo frontend React quando aplicado ao ambiente. |
+| `VITE_API_BASE_URL` | URL base da API consumida pelo frontend Vite. |
 | `JWT_SECRET` | Segredo de assinatura do JWT; deve ter ao menos 32 caracteres. |
 | `JWT_EXPIRATION` | Duração ISO-8601 do access token, como `PT8H`. |
 | `DEMO_AUTH_USERS_ENABLED` | Habilita bootstrap local de usuários de demonstração. |
@@ -240,6 +288,31 @@ docker compose down -v
 | `DEMO_ATTENDANT_EMAIL` | E-mail do usuário local com role `ATTENDANT`. |
 | `DEMO_ATTENDANT_PASSWORD` | Senha local usada para gerar hash BCrypt do atendente no bootstrap. |
 | `CORS_ALLOWED_ORIGINS` | Origens permitidas para chamadas browser/API, separadas por vírgula. |
+
+## Frontend Implementado
+
+O frontend da Fase 5 é uma aplicação operacional, sem landing page. A primeira tela é o login e, após autenticação, o usuário acessa o painel com navegação lateral.
+
+Telas disponíveis:
+
+- Login.
+- Dashboard diário.
+- Agenda diária.
+- Clientes.
+- Profissionais.
+- Serviços.
+
+Fluxos disponíveis:
+
+- Login com Bearer JWT.
+- Logout.
+- Consulta de indicadores diários por data e profissional.
+- Listagem da agenda com filtros por data, profissional, cliente, serviço e status.
+- Criação, remarcação, cancelamento, confirmação, check-in, conclusão e falta em agendamentos.
+- CRUD de clientes.
+- CRUD administrativo de profissionais e serviços.
+
+Textos visíveis, mensagens e feedbacks ficam em português PT-BR. Código, rotas, payloads e identificadores técnicos permanecem em inglês.
 
 ## Endpoints Implementados
 
@@ -453,7 +526,7 @@ O cálculo de disponibilidade parte das regras semanais ativas do profissional. 
 5. Fase 3: autenticação JWT e autorização por roles.
 6. Pré-Fase 4: transições operacionais e calendário profissional.
 7. Fase 4: dashboard diário e filtros operacionais.
-8. Fase 5: frontend React.
+8. Fase 5: frontend React concluído.
 9. Fase 6: testes automatizados ampliados.
 10. Fase 7: Docker Compose completo, documentação final e preparação para deploy.
 
@@ -466,6 +539,7 @@ O cálculo de disponibilidade parte das regras semanais ativas do profissional. 
 - [Exemplos HTTP da Fase 3](docs/api/phase-3-auth.http)
 - [Exemplos HTTP da pré-Fase 4](docs/api/pre-phase-4-operational-calendar.http)
 - [Exemplos HTTP da Fase 4](docs/api/phase-4-dashboard.http)
+- [Documentação do frontend](frontend/README.md)
 - [ADR 0001 - Arquitetura e stack](docs/adr/0001-architecture-and-stack.md)
 - [ADR 0002 - Regra de conflito de agenda](docs/adr/0002-schedule-conflict-rule.md)
 - [ADR 0003 - Autenticação JWT e roles](docs/adr/0003-authentication-and-roles.md)
