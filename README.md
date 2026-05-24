@@ -2,7 +2,7 @@
 
 AtendeJá é uma aplicação full stack de agenda e fila de atendimento para prestadores locais, como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas.
 
-> Status atual: Fase 6 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário, frontend React + TypeScript funcional e testes automatizados ampliados. Deploy ainda não foi implementado.
+> Status atual: Fase 7 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário, frontend React + TypeScript funcional, testes automatizados ampliados, Docker Compose completo com API/banco/frontend e CI com GitHub Actions. Deploy automático ainda não foi implementado.
 
 ## Estado Atual
 
@@ -90,9 +90,20 @@ Implementado na Fase 6:
 - Testes frontend para formulários principais de clientes, profissionais e serviços, incluindo criação, edição, inativação e ocultação de ações administrativas para `ATTENDANT`.
 - Correção de bugs encontrados pelos testes nos formulários React de edição e no redirecionamento pós-login.
 
+Implementado na Fase 7:
+
+- Dockerfile multi-stage para a API Spring Boot.
+- Dockerfile multi-stage para o frontend React com Nginx.
+- Docker Compose completo com `db`, `api` e `frontend`.
+- Health checks para PostgreSQL, API e frontend.
+- Correlation id HTTP com `X-Correlation-Id` nos logs da API.
+- `.env.example` revisado com placeholders locais e sem secrets reais.
+- GitHub Actions com testes/build do backend, testes/build do frontend e validação/build Docker.
+- Documentação final de execução local, CI e preparação de deploy.
+
 Ainda planejado:
 
-- Fase 7: Docker Compose completo com API/frontend, CI e preparação para deploy.
+- Deploy real em provedor externo, condicionado à configuração de contas, domínios e secrets fora do repositório.
 
 ## Stack Atual
 
@@ -106,6 +117,7 @@ Ainda planejado:
 - PostgreSQL
 - Springdoc OpenAPI
 - Spring Boot Actuator
+- Logs com correlation id via `X-Correlation-Id`
 - Spring Security
 - OAuth2 Resource Server para Bearer JWT
 - BCrypt
@@ -116,12 +128,16 @@ Ainda planejado:
 - React Router
 - React Hook Form
 - Vitest e React Testing Library
-- Docker Compose para PostgreSQL local
+- Docker
+- Docker Compose completo com PostgreSQL, API e frontend
+- Nginx para servir o frontend empacotado
+- GitHub Actions
 
 ## Stack Planejada
 
-- Docker Compose completo com API, banco e frontend
-- CI/CD e preparação para deploy
+- Deploy backend em Render, Railway ou Fly.io
+- Deploy frontend em Vercel ou Netlify
+- CI/CD com deploy automático somente após configuração segura de credenciais
 
 ## Arquitetura Atual
 
@@ -133,7 +149,8 @@ atendeja/
     api/                exemplos HTTP por fase do backend
     briefing/           contexto do produto e escopo
   frontend/             aplicação React + TypeScript da Fase 5
-  docker-compose.yml    PostgreSQL local
+  .github/workflows/    pipeline CI da Fase 7
+  docker-compose.yml    stack local completa com db, api e frontend
   .env.example          variáveis de ambiente de exemplo
 ```
 
@@ -154,6 +171,7 @@ Pacotes principais do backend:
 ### Pré-requisitos
 
 - Java 17.
+- Node.js 22 ou compatível com Vite 7 para desenvolvimento frontend fora do Docker.
 - Docker Desktop ou Docker Engine com Docker Compose.
 - Git.
 
@@ -173,9 +191,39 @@ No Linux/macOS:
 cp .env.example .env
 ```
 
-Ao executar o backend diretamente pelo Maven, exponha no terminal as variáveis de autenticação necessárias. O arquivo `.env` é lido pelo Docker Compose, mas não é carregado automaticamente pelo processo Java.
+Os valores de `.env.example` são placeholders locais. Troque senhas e `JWT_SECRET` antes de usar qualquer ambiente compartilhado. Ao executar o backend diretamente pelo Maven, exponha no terminal as variáveis de autenticação necessárias. O arquivo `.env` é lido pelo Docker Compose, mas não é carregado automaticamente pelo processo Java.
 
-### Subir banco local
+### Rodar stack completa com Docker
+
+Na raiz do repositório:
+
+```bash
+docker compose up --build
+```
+
+Em modo destacado:
+
+```bash
+docker compose up --build -d
+```
+
+Serviços locais:
+
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:8080`
+- Health check: `http://localhost:8080/actuator/health`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- PostgreSQL: `localhost:5432`
+
+Usuários de demonstração são criados pelo backend quando `DEMO_AUTH_USERS_ENABLED=true`:
+
+- `admin@atendeja.local`
+- `attendant@atendeja.local`
+
+As senhas vêm de `DEMO_ADMIN_PASSWORD` e `DEMO_ATTENDANT_PASSWORD` no `.env`.
+
+### Subir somente o banco local
 
 ```bash
 docker compose up -d db
@@ -264,6 +312,7 @@ npm run build
 
 ```bash
 docker compose config --quiet
+docker compose build api frontend
 ```
 
 ### Parar ambiente local
@@ -285,10 +334,10 @@ docker compose down -v
 | `POSTGRES_DB` | Nome do banco PostgreSQL local. |
 | `POSTGRES_USER` | Usuário do banco. |
 | `POSTGRES_PASSWORD` | Senha do banco. |
-| `POSTGRES_PORT` | Porta exposta localmente para o PostgreSQL. |
-| `API_PORT` | Porta da API Spring Boot. |
-| `FRONTEND_PORT` | Porta local usada pelo frontend React quando aplicado ao ambiente. |
-| `VITE_API_BASE_URL` | URL base da API consumida pelo frontend Vite. |
+| `POSTGRES_PORT` | Porta exposta localmente para o PostgreSQL no host. |
+| `API_PORT` | Porta da API exposta no host pelo Docker Compose. Dentro do container, a API usa `8080`. |
+| `FRONTEND_PORT` | Porta do frontend exposta no host pelo Docker Compose. Dentro do container, o Nginx usa `80`. |
+| `VITE_API_BASE_URL` | URL base da API embutida no build do frontend Vite. No Docker local, use a URL acessível pelo browser, como `http://localhost:8080`. |
 | `JWT_SECRET` | Segredo de assinatura do JWT; deve ter ao menos 32 caracteres. |
 | `JWT_EXPIRATION` | Duração ISO-8601 do access token, como `PT8H`. |
 | `DEMO_AUTH_USERS_ENABLED` | Habilita bootstrap local de usuários de demonstração. |
@@ -297,6 +346,18 @@ docker compose down -v
 | `DEMO_ATTENDANT_EMAIL` | E-mail do usuário local com role `ATTENDANT`. |
 | `DEMO_ATTENDANT_PASSWORD` | Senha local usada para gerar hash BCrypt do atendente no bootstrap. |
 | `CORS_ALLOWED_ORIGINS` | Origens permitidas para chamadas browser/API, separadas por vírgula. |
+
+## CI E Preparação De Deploy
+
+O workflow `.github/workflows/ci.yml` roda em pushes e pull requests para `main`:
+
+- Testes do backend com Maven Wrapper.
+- Testes do frontend com Vitest.
+- Build do frontend com TypeScript e Vite.
+- Validação de `docker compose config --quiet`.
+- Build das imagens Docker da API e do frontend.
+
+O deploy automático não está habilitado porque exige secrets e configuração de contas fora do repositório. As instruções de preparação estão em [docs/deploy-prep.md](docs/deploy-prep.md).
 
 ## Frontend Implementado
 
@@ -537,7 +598,7 @@ O cálculo de disponibilidade parte das regras semanais ativas do profissional. 
 7. Fase 4: dashboard diário e filtros operacionais.
 8. Fase 5: frontend React concluído.
 9. Fase 6: testes automatizados ampliados concluídos.
-10. Fase 7: Docker Compose completo, documentação final e preparação para deploy.
+10. Fase 7: Docker Compose completo, documentação final, CI e preparação para deploy concluídos.
 
 ## Documentação Complementar
 
@@ -548,6 +609,7 @@ O cálculo de disponibilidade parte das regras semanais ativas do profissional. 
 - [Exemplos HTTP da Fase 3](docs/api/phase-3-auth.http)
 - [Exemplos HTTP da pré-Fase 4](docs/api/pre-phase-4-operational-calendar.http)
 - [Exemplos HTTP da Fase 4](docs/api/phase-4-dashboard.http)
+- [Preparação de deploy](docs/deploy-prep.md)
 - [Documentação do frontend](frontend/README.md)
 - [ADR 0001 - Arquitetura e stack](docs/adr/0001-architecture-and-stack.md)
 - [ADR 0002 - Regra de conflito de agenda](docs/adr/0002-schedule-conflict-rule.md)

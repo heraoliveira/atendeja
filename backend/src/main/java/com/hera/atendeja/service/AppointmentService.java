@@ -22,6 +22,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AppointmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(AppointmentService.class);
 
     private static final Set<AppointmentStatus> NON_BLOCKING_STATUSES = Set.of(
             AppointmentStatus.CANCELED,
@@ -111,7 +115,17 @@ public class AppointmentService {
                 request.startAt(),
                 endAt
         );
-        return appointmentMapper.toResponse(appointmentRepository.save(appointment));
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        log.info(
+                "Appointment created: id={}, customerId={}, professionalId={}, serviceId={}, startAt={}, endAt={}",
+                savedAppointment.getId(),
+                customer.getId(),
+                professional.getId(),
+                service.getId(),
+                savedAppointment.getStartAt(),
+                savedAppointment.getEndAt()
+        );
+        return appointmentMapper.toResponse(savedAppointment);
     }
 
     @Transactional
@@ -143,6 +157,7 @@ public class AppointmentService {
 
         appointment.setStatus(AppointmentStatus.CANCELED);
         appointment.setCancelReason(request.cancelReason().trim());
+        log.info("Appointment canceled: id={}, professionalId={}", appointment.getId(), appointment.getProfessional().getId());
         return appointmentMapper.toResponse(appointment);
     }
 

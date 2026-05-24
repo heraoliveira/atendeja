@@ -1,6 +1,6 @@
 # Frontend AtendeJá
 
-Aplicação web da Fase 5 do AtendeJá, fortalecida na Fase 6 com testes automatizados em Vitest e React Testing Library.
+Aplicação web da Fase 5 do AtendeJá, fortalecida na Fase 6 com testes automatizados em Vitest e React Testing Library e empacotada na Fase 7 com Docker e Nginx.
 
 ## Status Atual
 
@@ -17,6 +17,7 @@ Implementado:
 - Restrições visuais por role para ações administrativas.
 - Mensagens, labels, filtros e feedback em português PT-BR.
 - Testes automatizados para login, logout, rotas protegidas, cliente HTTP, dashboard, agenda e formulários principais.
+- Dockerfile multi-stage para gerar o build estático e servir com Nginx.
 
 Não implementado nesta fase:
 
@@ -24,13 +25,14 @@ Não implementado nesta fase:
 - Cadastro público.
 - Recuperação de senha.
 - Frontend para disponibilidade profissional.
-- Deploy, CI/CD ou Docker Compose completo com frontend.
+- Deploy automático.
 
 ## Pré-Requisitos
 
-- Node.js 24 ou compatível com Vite 7.
+- Node.js 22 ou compatível com Vite 7.
 - API Spring Boot em execução.
 - Usuários locais criados pelo backend com `DEMO_AUTH_USERS_ENABLED=true`.
+- Docker Desktop ou Docker Engine com Docker Compose para execução conteinerizada.
 
 ## Configuração
 
@@ -91,6 +93,14 @@ npm test
 ```
 
 A suíte cobre utilitários, cliente HTTP, autenticação, rotas protegidas, dashboard, agenda e formulários de clientes, profissionais e serviços.
+
+Rodar pelo Docker Compose completo, a partir da raiz do repositório:
+
+```bash
+docker compose up --build
+```
+
+No Docker local, o frontend fica em `http://localhost:5173` e consome a API configurada em `VITE_API_BASE_URL`.
 
 ## Fluxos Disponíveis
 
