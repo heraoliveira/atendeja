@@ -13,9 +13,10 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<LoginRequest>();
+  const target = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? "/dashboard";
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={target} replace />;
   }
 
   async function onSubmit(values: LoginRequest) {
@@ -23,7 +24,6 @@ export function LoginPage() {
     setError(null);
     try {
       await login(values);
-      const target = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? "/dashboard";
       navigate(target, { replace: true });
     } catch (caught) {
       setError(getApiErrorMessage(caught));
