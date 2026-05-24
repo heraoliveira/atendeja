@@ -7,7 +7,7 @@ import {
   listAppointments,
   rescheduleAppointment
 } from "../services/appointmentService";
-import { listCustomers } from "../services/customerService";
+import { searchActiveCustomers } from "../services/customerService";
 import { listProfessionals } from "../services/professionalService";
 import { listServices } from "../services/serviceCatalogService";
 import {
@@ -33,7 +33,7 @@ vi.mock("../services/appointmentService", () => ({
 }));
 
 vi.mock("../services/customerService", () => ({
-  listCustomers: vi.fn()
+  searchActiveCustomers: vi.fn()
 }));
 
 vi.mock("../services/professionalService", () => ({
@@ -48,7 +48,7 @@ const mockedCancelAppointment = vi.mocked(cancelAppointment);
 const mockedConfirmAppointment = vi.mocked(confirmAppointment);
 const mockedCreateAppointment = vi.mocked(createAppointment);
 const mockedListAppointments = vi.mocked(listAppointments);
-const mockedListCustomers = vi.mocked(listCustomers);
+const mockedSearchActiveCustomers = vi.mocked(searchActiveCustomers);
 const mockedListProfessionals = vi.mocked(listProfessionals);
 const mockedListServices = vi.mocked(listServices);
 const mockedRescheduleAppointment = vi.mocked(rescheduleAppointment);
@@ -58,7 +58,7 @@ async function waitForAgendaRow() {
 }
 
 function setupSuccessfulLists() {
-  mockedListCustomers.mockResolvedValue(pageResponse([customerResponse()]));
+  mockedSearchActiveCustomers.mockResolvedValue(pageResponse([customerResponse()]));
   mockedListProfessionals.mockResolvedValue(pageResponse([professionalResponse()]));
   mockedListServices.mockResolvedValue(pageResponse([serviceResponse()]));
   mockedListAppointments.mockResolvedValue(pageResponse([appointmentResponse()], {
@@ -67,6 +67,14 @@ function setupSuccessfulLists() {
     first: true,
     last: false
   }));
+}
+
+async function selectClient(scope: HTMLElement) {
+  fireEvent.change(within(scope).getByLabelText(/^Cliente$/i), { target: { value: "Maria" } });
+  await waitFor(() => {
+    expect(mockedSearchActiveCustomers).toHaveBeenCalledWith("Maria", expect.objectContaining({ page: 0, size: 10 }));
+  });
+  fireEvent.click(await within(scope).findByRole("button", { name: /Maria Cliente/i }));
 }
 
 describe("AppointmentsPage", () => {
@@ -86,11 +94,14 @@ describe("AppointmentsPage", () => {
     renderWithProviders(<AppointmentsPage />);
 
     await waitForAgendaRow();
+    const filterBar = document.querySelector(".filter-bar") as HTMLElement;
+    await selectClient(filterBar);
     fireEvent.change(screen.getByLabelText(/^Status$/i), { target: { value: "CONFIRMED" } });
     fireEvent.click(screen.getByRole("button", { name: /próxima/i }));
 
     await waitFor(() => {
       expect(mockedListAppointments).toHaveBeenCalledWith(expect.objectContaining({
+        customerId: 1,
         status: "CONFIRMED",
         page: 1,
         size: 10
@@ -103,7 +114,7 @@ describe("AppointmentsPage", () => {
 
     await waitForAgendaRow();
     const formPanel = screen.getByRole("heading", { name: "Novo agendamento" }).closest("aside") as HTMLElement;
-    fireEvent.change(within(formPanel).getByLabelText(/^Cliente$/i), { target: { value: "1" } });
+    await selectClient(formPanel);
     fireEvent.change(within(formPanel).getByLabelText(/^Profissional$/i), { target: { value: "2" } });
     fireEvent.change(within(formPanel).getByLabelText(/^Serviço$/i), { target: { value: "3" } });
     fireEvent.change(within(formPanel).getByLabelText(/^Início$/i), { target: { value: "2030-01-20T09:00" } });
@@ -135,7 +146,7 @@ describe("AppointmentsPage", () => {
 
     await waitForAgendaRow();
     const formPanel = screen.getByRole("heading", { name: "Novo agendamento" }).closest("aside") as HTMLElement;
-    fireEvent.change(within(formPanel).getByLabelText(/^Cliente$/i), { target: { value: "1" } });
+    await selectClient(formPanel);
     fireEvent.change(within(formPanel).getByLabelText(/^Profissional$/i), { target: { value: "2" } });
     fireEvent.change(within(formPanel).getByLabelText(/^Serviço$/i), { target: { value: "3" } });
     fireEvent.change(within(formPanel).getByLabelText(/^Início$/i), { target: { value: "2030-01-20T09:00" } });
@@ -143,6 +154,20 @@ describe("AppointmentsPage", () => {
 
     expect(await screen.findByText("Já existe um agendamento para este profissional neste horário."))
       .toBeInTheDocument();
+  });
+
+  it("requires a selected customer before creating an appointment", async () => {
+    renderWithProviders(<AppointmentsPage />);
+
+    await waitForAgendaRow();
+    const formPanel = screen.getByRole("heading", { name: "Novo agendamento" }).closest("aside") as HTMLElement;
+    fireEvent.change(within(formPanel).getByLabelText(/^Profissional$/i), { target: { value: "2" } });
+    fireEvent.change(within(formPanel).getByLabelText(/^Serv/i), { target: { value: "3" } });
+    fireEvent.change(within(formPanel).getByLabelText(/^In/i), { target: { value: "2030-01-20T09:00" } });
+    fireEvent.click(within(formPanel).getByRole("button", { name: /criar agendamento/i }));
+
+    expect(await within(formPanel).findByText("Selecione o cliente.")).toBeInTheDocument();
+    expect(mockedCreateAppointment).not.toHaveBeenCalled();
   });
 
   it("runs operational appointment actions from the agenda list", async () => {

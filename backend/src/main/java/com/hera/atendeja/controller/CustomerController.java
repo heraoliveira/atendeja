@@ -45,6 +45,15 @@ public class CustomerController {
         return PageResponse.from(customerService.findAll(search, active, pageable));
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Busca clientes ativos para autocomplete")
+    public PageResponse<CustomerResponse> searchActive(
+            @RequestParam("q") String query,
+            @PageableDefault(size = 10, sort = "name") Pageable pageable
+    ) {
+        return PageResponse.from(customerService.searchActive(query, pageable));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Busca um cliente por id")
     public CustomerResponse findById(@PathVariable Long id) {

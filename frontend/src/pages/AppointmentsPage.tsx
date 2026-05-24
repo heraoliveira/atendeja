@@ -5,6 +5,7 @@ import { EmptyState, Feedback, LoadingState } from "../components/Feedback";
 import { PageHeader } from "../components/PageHeader";
 import { Pagination } from "../components/Pagination";
 import { StatusBadge } from "../components/StatusBadge";
+import { AsyncClientSelect } from "../components/AsyncClientSelect";
 import {
   cancelAppointment,
   checkInAppointment,
@@ -15,7 +16,6 @@ import {
   markAppointmentNoShow,
   rescheduleAppointment
 } from "../services/appointmentService";
-import { listCustomers } from "../services/customerService";
 import { listProfessionals } from "../services/professionalService";
 import { listServices } from "../services/serviceCatalogService";
 import type {
@@ -62,11 +62,11 @@ const emptyPage: PageResponse<AppointmentResponse> = {
 export function AppointmentsPage() {
   const [date, setDate] = useState(toDateInputValue());
   const [professionalId, setProfessionalId] = useState("");
-  const [customerId, setCustomerId] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerResponse | null>(null);
+  const [selectedFormCustomer, setSelectedFormCustomer] = useState<CustomerResponse | null>(null);
   const [serviceId, setServiceId] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState<PageResponse<AppointmentResponse>>(emptyPage);
-  const [customers, setCustomers] = useState<CustomerResponse[]>([]);
   const [professionals, setProfessionals] = useState<ProfessionalResponse[]>([]);
   const [services, setServices] = useState<ServiceResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,7 +75,7 @@ export function AppointmentsPage() {
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [operationStartAt, setOperationStartAt] = useState("");
   const [operationReason, setOperationReason] = useState("");
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<AppointmentFormValues>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<AppointmentFormValues>({
     defaultValues: {
       customerId: "",
       professionalId: "",
@@ -86,12 +86,10 @@ export function AppointmentsPage() {
 
   useEffect(() => {
     Promise.all([
-      listCustomers({ active: true, size: 100 }),
       listProfessionals({ active: true, size: 100 }),
       listServices({ active: true, size: 100 })
     ])
-      .then(([customerPage, professionalPage, servicePage]) => {
-        setCustomers(customerPage.content);
+      .then(([professionalPage, servicePage]) => {
         setProfessionals(professionalPage.content);
         setServices(servicePage.content);
       })
@@ -101,7 +99,7 @@ export function AppointmentsPage() {
   useEffect(() => {
     loadAppointments(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, professionalId, customerId, serviceId, status]);
+  }, [date, professionalId, selectedCustomer, serviceId, status]);
 
   async function loadAppointments(nextPage = page.page) {
     setIsLoading(true);
@@ -110,7 +108,7 @@ export function AppointmentsPage() {
       const response = await listAppointments({
         date,
         professionalId: professionalId ? Number(professionalId) : "",
-        customerId: customerId ? Number(customerId) : "",
+        customerId: selectedCustomer ? selectedCustomer.id : "",
         serviceId: serviceId ? Number(serviceId) : "",
         status: status as AppointmentStatus | "",
         page: nextPage,
@@ -136,6 +134,7 @@ export function AppointmentsPage() {
         startAt: localDateTimeToInstant(values.startAt)
       });
       setMessage("Agendamento criado com sucesso.");
+      setSelectedFormCustomer(null);
       reset({ customerId: "", professionalId: "", serviceId: "", startAt: "" });
       await loadAppointments(0);
     } catch (caught) {
@@ -203,8 +202,8 @@ export function AppointmentsPage() {
   }
 
   const hasOptions = useMemo(
-    () => customers.length > 0 && professionals.length > 0 && services.length > 0,
-    [customers.length, professionals.length, services.length]
+    () => professionals.length > 0 && services.length > 0,
+    [professionals.length, services.length]
   );
 
   return (
@@ -229,10 +228,11 @@ export function AppointmentsPage() {
         </label>
         <label>
           Cliente
-          <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
-            <option value="">Todos</option>
-            {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
-          </select>
+          <AsyncClientSelect
+            value={selectedCustomer}
+            onChange={setSelectedCustomer}
+            placeholder="Todos os clientes"
+          />
         </label>
         <label>
           Serviço
@@ -313,14 +313,24 @@ export function AppointmentsPage() {
 
         <aside className="content-panel form-panel">
           <h2>Novo agendamento</h2>
-          {!hasOptions ? <Feedback type="warning">Cadastre cliente, profissional e serviço ativos antes de agendar.</Feedback> : null}
+          {!hasOptions ? <Feedback type="warning">Cadastre profissional e serviço ativos antes de agendar.</Feedback> : null}
           <form className="form-stack" onSubmit={handleSubmit(onCreate)}>
             <label>
               Cliente
-              <select {...register("customerId", { required: "Selecione o cliente." })}>
-                <option value="">Selecione</option>
-                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
-              </select>
+              <AsyncClientSelect
+                value={selectedFormCustomer}
+                onChange={(customer) => {
+                  setSelectedFormCustomer(customer);
+                  setValue("customerId", customer ? String(customer.id) : "", {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  });
+                }}
+                placeholder="Digite nome, telefone ou e-mail"
+                disabled={!hasOptions}
+                required
+              />
+              <input type="hidden" {...register("customerId", { required: "Selecione o cliente." })} />
               {errors.customerId ? <small className="field-error">{errors.customerId.message}</small> : null}
             </label>
             <label>

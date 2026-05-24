@@ -13,8 +13,25 @@ export interface CustomerFilters {
   size?: number;
 }
 
+export interface CustomerSearchOptions {
+  page?: number;
+  size?: number;
+  signal?: AbortSignal;
+}
+
 export function listCustomers(filters: CustomerFilters = {}): Promise<PageResponse<CustomerResponse>> {
   return apiRequest<PageResponse<CustomerResponse>>("/api/v1/customers", { params: { ...filters } });
+}
+
+export function searchActiveCustomers(
+  query: string,
+  options: CustomerSearchOptions = {}
+): Promise<PageResponse<CustomerResponse>> {
+  const { page = 0, size = 10, signal } = options;
+  return apiRequest<PageResponse<CustomerResponse>>("/api/v1/customers/search", {
+    params: { q: query, page, size },
+    signal
+  });
 }
 
 export function createCustomer(request: CustomerCreateRequest): Promise<CustomerResponse> {

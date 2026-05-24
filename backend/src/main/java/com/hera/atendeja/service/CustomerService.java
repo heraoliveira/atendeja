@@ -8,12 +8,17 @@ import com.hera.atendeja.exception.ResourceNotFoundException;
 import com.hera.atendeja.mapper.CustomerMapper;
 import com.hera.atendeja.repository.CustomerRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CustomerService {
+
+    private static final int MIN_AUTOCOMPLETE_QUERY_LENGTH = 2;
+    private static final int MAX_AUTOCOMPLETE_SIZE = 20;
 
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
@@ -26,6 +31,16 @@ public class CustomerService {
     @Transactional(readOnly = true)
     public Page<CustomerResponse> findAll(String search, Boolean active, Pageable pageable) {
         return customerRepository.search(SearchNormalizer.toLikePattern(search), active, pageable)
+                .map(customerMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CustomerResponse> searchActive(String query, Pageable pageable) {
+        Pageable limitedPageable = limitAutocompletePageable(pageable);
+        if (query == null || query.trim().length() < MIN_AUTOCOMPLETE_QUERY_LENGTH) {
+            return Page.empty(limitedPageable);
+        }
+        return customerRepository.searchActive(SearchNormalizer.toLikePattern(query), limitedPageable)
                 .map(customerMapper::toResponse);
     }
 
@@ -56,5 +71,13 @@ public class CustomerService {
     private Customer getById(Long id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente", id));
+    }
+
+    private Pageable limitAutocompletePageable(Pageable pageable) {
+        int requestedSize = pageable.isPaged() ? pageable.getPageSize() : MAX_AUTOCOMPLETE_SIZE;
+        int pageSize = Math.min(requestedSize, MAX_AUTOCOMPLETE_SIZE);
+        int pageNumber = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        Sort sort = pageable.getSortOr(Sort.by("name").ascending());
+        return PageRequest.of(pageNumber, pageSize, sort);
     }
 }
