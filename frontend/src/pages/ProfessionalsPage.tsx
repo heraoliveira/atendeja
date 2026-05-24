@@ -14,7 +14,11 @@ import {
 import type { PageResponse, ProfessionalResponse, ProfessionalUpdateRequest } from "../types/api";
 import { getApiErrorMessage } from "../utils/errors";
 
-type ProfessionalFormValues = ProfessionalUpdateRequest;
+type ProfessionalFormValues = Omit<ProfessionalUpdateRequest, "active"> & { active: string | boolean };
+
+function normalizeActive(value: ProfessionalFormValues["active"]): boolean {
+  return value === true || String(value) === "true";
+}
 
 const emptyPage: PageResponse<ProfessionalResponse> = {
   content: [],
@@ -37,7 +41,7 @@ export function ProfessionalsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ProfessionalFormValues>({
-    defaultValues: { name: "", phone: "", email: "", active: true }
+    defaultValues: { name: "", phone: "", email: "", active: "true" }
   });
 
   useEffect(() => {
@@ -65,7 +69,7 @@ export function ProfessionalsPage() {
 
   function startCreate() {
     setSelected(null);
-    reset({ name: "", phone: "", email: "", active: true });
+    reset({ name: "", phone: "", email: "", active: "true" });
   }
 
   function startEdit(professional: ProfessionalResponse) {
@@ -74,7 +78,7 @@ export function ProfessionalsPage() {
       name: professional.name,
       phone: professional.phone,
       email: professional.email ?? "",
-      active: professional.active
+      active: professional.active ? "true" : "false"
     });
   }
 
@@ -83,7 +87,11 @@ export function ProfessionalsPage() {
     setError(null);
     try {
       if (selected) {
-        await updateProfessional(selected.id, { ...values, email: values.email || null });
+        await updateProfessional(selected.id, {
+          ...values,
+          active: normalizeActive(values.active),
+          email: values.email || null
+        });
         setMessage("Profissional atualizado com sucesso.");
       } else {
         await createProfessional({
@@ -206,7 +214,7 @@ export function ProfessionalsPage() {
               {selected ? (
                 <label>
                   Situação
-                  <select {...register("active", { setValueAs: (value) => value === "true" })}>
+                  <select {...register("active", { setValueAs: (value) => value === true || value === "true" })}>
                     <option value="true">Ativo</option>
                     <option value="false">Inativo</option>
                   </select>

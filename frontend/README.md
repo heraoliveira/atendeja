@@ -1,6 +1,6 @@
 # Frontend AtendeJá
 
-Aplicação web da Fase 5 do AtendeJá, construída com React, TypeScript, Vite, React Router e React Hook Form.
+Aplicação web da Fase 5 do AtendeJá, fortalecida na Fase 6 com testes automatizados em Vitest e React Testing Library.
 
 ## Status Atual
 
@@ -16,6 +16,7 @@ Implementado:
 - CRUDs funcionais de clientes, profissionais e serviços.
 - Restrições visuais por role para ações administrativas.
 - Mensagens, labels, filtros e feedback em português PT-BR.
+- Testes automatizados para login, logout, rotas protegidas, cliente HTTP, dashboard, agenda e formulários principais.
 
 Não implementado nesta fase:
 
@@ -83,11 +84,13 @@ Build de produção:
 npm run build
 ```
 
-Testes criados para utilitários e cliente HTTP:
+Testes automatizados:
 
 ```bash
 npm test
 ```
+
+A suíte cobre utilitários, cliente HTTP, autenticação, rotas protegidas, dashboard, agenda e formulários de clientes, profissionais e serviços.
 
 ## Fluxos Disponíveis
 

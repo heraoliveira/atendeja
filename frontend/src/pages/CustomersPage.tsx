@@ -13,7 +13,11 @@ import {
 import type { CustomerResponse, CustomerUpdateRequest, PageResponse } from "../types/api";
 import { getApiErrorMessage } from "../utils/errors";
 
-type CustomerFormValues = CustomerUpdateRequest;
+type CustomerFormValues = Omit<CustomerUpdateRequest, "active"> & { active: string | boolean };
+
+function normalizeActive(value: CustomerFormValues["active"]): boolean {
+  return value === true || String(value) === "true";
+}
 
 const emptyPage: PageResponse<CustomerResponse> = {
   content: [],
@@ -34,7 +38,7 @@ export function CustomersPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CustomerFormValues>({
-    defaultValues: { name: "", phone: "", email: "", document: "", active: true }
+    defaultValues: { name: "", phone: "", email: "", document: "", active: "true" }
   });
 
   useEffect(() => {
@@ -62,7 +66,7 @@ export function CustomersPage() {
 
   function startCreate() {
     setSelected(null);
-    reset({ name: "", phone: "", email: "", document: "", active: true });
+    reset({ name: "", phone: "", email: "", document: "", active: "true" });
   }
 
   function startEdit(customer: CustomerResponse) {
@@ -72,7 +76,7 @@ export function CustomersPage() {
       phone: customer.phone,
       email: customer.email ?? "",
       document: customer.document ?? "",
-      active: customer.active
+      active: customer.active ? "true" : "false"
     });
   }
 
@@ -83,6 +87,7 @@ export function CustomersPage() {
       if (selected) {
         await updateCustomer(selected.id, {
           ...values,
+          active: normalizeActive(values.active),
           email: values.email || null,
           document: values.document || null
         });
@@ -208,7 +213,7 @@ export function CustomersPage() {
             {selected ? (
               <label>
                 Situação
-                <select {...register("active", { setValueAs: (value) => value === "true" })}>
+                <select {...register("active", { setValueAs: (value) => value === true || value === "true" })}>
                   <option value="true">Ativo</option>
                   <option value="false">Inativo</option>
                 </select>

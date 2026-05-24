@@ -141,6 +141,14 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void shouldRejectBusinessEndpointWithInvalidBearerToken() throws Exception {
+        mockMvc.perform(get("/api/v1/services")
+                        .header("Authorization", "Bearer invalid-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
     void shouldAllowCorsPreflightFromConfiguredFrontendOrigin() throws Exception {
         mockMvc.perform(options("/api/v1/dashboard/daily")
                         .header("Origin", "http://localhost:5173")

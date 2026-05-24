@@ -15,7 +15,11 @@ import type { PageResponse, ServiceResponse, ServiceUpdateRequest } from "../typ
 import { getApiErrorMessage } from "../utils/errors";
 import { formatCurrency } from "../utils/formatters";
 
-type ServiceFormValues = ServiceUpdateRequest;
+type ServiceFormValues = Omit<ServiceUpdateRequest, "active"> & { active: string | boolean };
+
+function normalizeActive(value: ServiceFormValues["active"]): boolean {
+  return value === true || String(value) === "true";
+}
 
 const emptyPage: PageResponse<ServiceResponse> = {
   content: [],
@@ -44,7 +48,7 @@ export function ServicesPage() {
       durationMinutes: 30,
       bufferMinutes: 0,
       price: 0,
-      active: true
+      active: "true"
     }
   });
 
@@ -73,7 +77,7 @@ export function ServicesPage() {
 
   function startCreate() {
     setSelected(null);
-    reset({ name: "", description: "", durationMinutes: 30, bufferMinutes: 0, price: 0, active: true });
+    reset({ name: "", description: "", durationMinutes: 30, bufferMinutes: 0, price: 0, active: "true" });
   }
 
   function startEdit(service: ServiceResponse) {
@@ -84,7 +88,7 @@ export function ServicesPage() {
       durationMinutes: service.durationMinutes,
       bufferMinutes: service.bufferMinutes,
       price: Number(service.price),
-      active: service.active
+      active: service.active ? "true" : "false"
     });
   }
 
@@ -97,7 +101,8 @@ export function ServicesPage() {
         description: values.description || null,
         durationMinutes: Number(values.durationMinutes),
         bufferMinutes: Number(values.bufferMinutes),
-        price: Number(values.price)
+        price: Number(values.price),
+        active: normalizeActive(values.active)
       };
       if (selected) {
         await updateService(selected.id, normalized);
@@ -236,7 +241,7 @@ export function ServicesPage() {
               {selected ? (
                 <label>
                   Situação
-                  <select {...register("active", { setValueAs: (value) => value === "true" })}>
+                  <select {...register("active", { setValueAs: (value) => value === true || value === "true" })}>
                     <option value="true">Ativo</option>
                     <option value="false">Inativo</option>
                   </select>

@@ -2,7 +2,7 @@
 
 AtendeJá é uma aplicação full stack de agenda e fila de atendimento para prestadores locais, como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas.
 
-> Status atual: Fase 5 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário e frontend React + TypeScript funcional. Deploy ainda não foi implementado.
+> Status atual: Fase 6 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário, frontend React + TypeScript funcional e testes automatizados ampliados. Deploy ainda não foi implementado.
 
 ## Estado Atual
 
@@ -78,11 +78,20 @@ Implementado na Fase 5:
 - Agenda diária com filtros, paginação, criação, remarcação, cancelamento e ações operacionais.
 - CRUDs de clientes, profissionais e serviços consumindo os endpoints existentes.
 - Ocultação de ações administrativas para `ATTENDANT`, mantendo a API como fonte real de autorização.
-- Testes básicos de frontend para utilitários e cliente HTTP.
+
+Implementado na Fase 6:
+
+- Auditoria e ampliação dos testes automatizados do backend e do frontend.
+- Testes unitários adicionais para autenticação em `AuthService`, normalização de e-mail, usuário inativo, senha inválida e emissão de JWT.
+- Teste de segurança para rejeição de Bearer Token inválido com `401 Unauthorized`.
+- Testes frontend com Vitest e React Testing Library para login, erro de credenciais, token armazenado, logout, rotas protegidas e sessão expirada.
+- Testes frontend para cliente HTTP cobrindo `401`, `403`, validação `400` e conflito `409`.
+- Testes frontend para dashboard com filtros, agenda diária com filtros, paginação, criação, conflito e ações operacionais.
+- Testes frontend para formulários principais de clientes, profissionais e serviços, incluindo criação, edição, inativação e ocultação de ações administrativas para `ATTENDANT`.
+- Correção de bugs encontrados pelos testes nos formulários React de edição e no redirecionamento pós-login.
 
 Ainda planejado:
 
-- Fase 6: ampliação de testes automatizados.
 - Fase 7: Docker Compose completo com API/frontend, CI e preparação para deploy.
 
 ## Stack Atual
@@ -241,7 +250,7 @@ cd backend
 mvn test
 ```
 
-Os testes de integração usam Testcontainers com PostgreSQL real. Docker precisa estar disponível para a JVM. Testes ignorados em `PersistenceIntegrationTest` não devem ser aceitos como sucesso nesta fase.
+Os testes de integração usam Testcontainers com PostgreSQL real. Docker precisa estar disponível para a JVM. Testes ignorados em `PersistenceIntegrationTest` não devem ser aceitos como sucesso.
 
 ### Rodar build e testes do frontend
 
@@ -527,7 +536,7 @@ O cálculo de disponibilidade parte das regras semanais ativas do profissional. 
 6. Pré-Fase 4: transições operacionais e calendário profissional.
 7. Fase 4: dashboard diário e filtros operacionais.
 8. Fase 5: frontend React concluído.
-9. Fase 6: testes automatizados ampliados.
+9. Fase 6: testes automatizados ampliados concluídos.
 10. Fase 7: Docker Compose completo, documentação final e preparação para deploy.
 
 ## Documentação Complementar

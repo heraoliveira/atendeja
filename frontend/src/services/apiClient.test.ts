@@ -46,6 +46,50 @@ describe("apiRequest", () => {
     });
   });
 
+  it("surfaces forbidden responses from protected endpoints", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      title: "Acesso negado",
+      detail: "Seu perfil não tem permissão para executar esta ação.",
+      code: "ACCESS_DENIED"
+    }), {
+      status: 403,
+      headers: { "Content-Type": "application/problem+json" }
+    })));
+
+    await expect(apiRequest("/api/v1/services", { method: "POST", body: { name: "Consulta" } }))
+      .rejects.toMatchObject({
+        status: 403,
+        message: "Seu perfil não tem permissão para executar esta ação.",
+        problem: expect.objectContaining({ code: "ACCESS_DENIED" })
+      });
+  });
+
+  it("surfaces validation messages returned by the API", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      title: "Requisição inválida",
+      detail: "Existem campos inválidos.",
+      code: "VALIDATION_ERROR",
+      errors: [
+        { field: "name", message: "Informe o nome." },
+        { field: "phone", message: "Informe o telefone." }
+      ]
+    }), {
+      status: 400,
+      headers: { "Content-Type": "application/problem+json" }
+    })));
+
+    await expect(apiRequest("/api/v1/customers", { method: "POST", body: {} }))
+      .rejects.toMatchObject({
+        status: 400,
+        problem: expect.objectContaining({
+          code: "VALIDATION_ERROR",
+          errors: expect.arrayContaining([
+            expect.objectContaining({ field: "name", message: "Informe o nome." })
+          ])
+        })
+      });
+  });
+
   it("clears stored session after unauthorized response", async () => {
     setStoredSession({
       accessToken: "expired-token",

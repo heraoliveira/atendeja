@@ -98,7 +98,7 @@ Critérios de aceite:
 
 ## Fase 6 - Testes automatizados
 
-Status: planejada.
+Status: concluída.
 
 Objetivo: ampliar cobertura dos fluxos críticos.
 
@@ -108,6 +108,7 @@ Critérios de aceite:
 - API testada com MockMvc.
 - Queries e migrations validadas com Testcontainers.
 - Fluxos principais do frontend testados.
+- Login, rotas protegidas, cliente HTTP, dashboard, agenda e formulários principais cobertos com Vitest e React Testing Library.
 
 ## Fase 7 - Docker Compose completo, documentação final e preparação para deploy
 
