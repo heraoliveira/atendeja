@@ -4,7 +4,7 @@ API REST do AtendeJá, construída com Java 17, Spring Boot, PostgreSQL e Flyway
 
 ## Status Atual
 
-O backend contém a base das Fases 1, 2, 3, pré-Fase 4 e Fase 4:
+O backend contém a base das Fases 1, 2, 3, pré-Fase 4, Fase 4 e empacotamento da Fase 7:
 
 - CRUDs de clientes, profissionais e serviços.
 - Listagens paginadas com contrato `PageResponse<T>`.
@@ -15,9 +15,11 @@ O backend contém a base das Fases 1, 2, 3, pré-Fase 4 e Fase 4:
 - Disponibilidade semanal e exceções por data para profissionais.
 - Dashboard diário com indicadores de agenda, cancelamentos, faltas e ocupação.
 - Endpoints de negócio protegidos por Spring Security.
+- Dockerfile multi-stage para build da API em container.
+- Correlation id HTTP via `X-Correlation-Id` aplicado aos logs da API.
 - Testes unitários, testes de controller com MockMvc e integração com PostgreSQL real via Testcontainers.
 
-Frontend React existe em `../frontend`; deploy ainda não foi implementado.
+Frontend React existe em `../frontend`; a stack local completa roda via `docker compose up --build`. Deploy automático ainda não foi implementado.
 
 ## Stack Atual
 
@@ -31,8 +33,10 @@ Frontend React existe em `../frontend`; deploy ainda não foi implementado.
 - PostgreSQL.
 - Springdoc OpenAPI.
 - Spring Boot Actuator.
+- Logs com correlation id via `X-Correlation-Id`.
 - Spring Security e OAuth2 Resource Server.
 - JUnit, Mockito, MockMvc e Testcontainers.
+- Docker.
 
 ## Execução Local
 
@@ -40,6 +44,12 @@ Suba o banco na raiz do repositório:
 
 ```bash
 docker compose up -d db
+```
+
+Para subir API, banco e frontend juntos na raiz do repositório:
+
+```bash
+docker compose up --build
 ```
 
 Rode a API no Windows PowerShell:
@@ -62,6 +72,8 @@ URLs locais:
 
 Antes de iniciar a API, configure `JWT_SECRET` com ao menos 32 caracteres. Usuários de demonstração locais são criados somente quando `DEMO_AUTH_USERS_ENABLED=true` e suas senhas são informadas por ambiente.
 Para integração com frontend local, configure `CORS_ALLOWED_ORIGINS`; o padrão aceito é `http://localhost:5173`.
+
+No Docker Compose, a API se conecta ao PostgreSQL pelo hostname interno `db` usando `SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/<database>`.
 
 ## Testes
 

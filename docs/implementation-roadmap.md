@@ -112,7 +112,7 @@ Critérios de aceite:
 
 ## Fase 7 - Docker Compose completo, documentação final e preparação para deploy
 
-Status: planejada.
+Status: concluída.
 
 Objetivo: empacotar API, frontend e banco para execução local completa e preparar documentação de portfólio.
 
@@ -121,3 +121,6 @@ Critérios de aceite:
 - `docker compose up --build` sobe a aplicação completa.
 - README final contém instruções executáveis.
 - Swagger, prints e decisões técnicas documentados.
+- Logs da API expõem correlation id simples via `X-Correlation-Id`.
+- GitHub Actions executa testes/build do backend e frontend.
+- Deploy fica preparado com instruções e variáveis, sem secrets reais no repositório.

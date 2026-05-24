@@ -21,6 +21,60 @@ services:
     networks:
       - atendeja-network
 
+  api:
+    build:
+      context: ./backend
+    image: atendeja-api:local
+    container_name: atendeja-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-atendeja}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-atendeja_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      JWT_SECRET: ${JWT_SECRET:-change_this_local_demo_secret_with_at_least_32_characters}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-PT8H}
+      DEMO_AUTH_USERS_ENABLED: ${DEMO_AUTH_USERS_ENABLED:-true}
+      DEMO_ADMIN_EMAIL: ${DEMO_ADMIN_EMAIL:-admin@atendeja.local}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-change_me_admin}
+      DEMO_ATTENDANT_EMAIL: ${DEMO_ATTENDANT_EMAIL:-attendant@atendeja.local}
+      DEMO_ATTENDANT_PASSWORD: ${DEMO_ATTENDANT_PASSWORD:-change_me_attendant}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - atendeja-network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    image: atendeja-frontend:local
+    container_name: atendeja-frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - atendeja-network
+
 volumes:
   postgres-data:
 

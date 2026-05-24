@@ -12,7 +12,7 @@ O AtendeJá precisa demonstrar uma aplicação full stack de portfólio com dom�
 
 Usar monorepo com uma fundação backend evolutiva.
 
-Stack implementada até a Fase 6:
+Stack implementada até a Fase 7:
 
 - Backend em Java 17 + Spring Boot.
 - Build backend com Maven e Maven Wrapper.
@@ -27,12 +27,14 @@ Stack implementada até a Fase 6:
 - Dashboard diário com indicadores operacionais e ocupação por disponibilidade real.
 - Frontend em React + TypeScript com Vite, React Router e React Hook Form.
 - Testes automatizados de backend e frontend com JUnit, Mockito, MockMvc, Testcontainers, Vitest e React Testing Library.
-- Execução local do PostgreSQL com Docker Compose.
+- Execução local completa com Docker Compose para PostgreSQL, API e frontend.
+- Imagens Docker multi-stage para backend e frontend.
+- CI com GitHub Actions para testes, build e validação Docker.
 - Documentação em README, Swagger/OpenAPI e ADRs.
 
 Stack planejada para fases futuras:
 
-- Docker Compose completo, CI/CD e deploy em fase posterior.
+- Deploy real em provedor externo e automação de CD após configuração segura de secrets.
 
 ## Consequências
 
