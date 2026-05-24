@@ -26,4 +26,20 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
             @Param("active") Boolean active,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT customer
+            FROM Customer customer
+            WHERE customer.active = true
+              AND (
+                :search IS NULL
+                OR LOWER(customer.name) LIKE :search
+                OR LOWER(customer.phone) LIKE :search
+                OR LOWER(COALESCE(customer.email, '')) LIKE :search
+              )
+            """)
+    Page<Customer> searchActive(
+            @Param("search") String search,
+            Pageable pageable
+    );
 }

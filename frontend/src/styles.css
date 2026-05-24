@@ -282,6 +282,84 @@ textarea:focus {
   border-color: #0d6b5f;
 }
 
+.async-select {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.async-select-input {
+  position: relative;
+}
+
+.async-select-input input {
+  padding-right: 42px;
+}
+
+.icon-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #667085;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover {
+  background: #edf1ef;
+  color: #0d6b5f;
+}
+
+.async-select-status {
+  color: #667085;
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+
+.async-select-options {
+  position: absolute;
+  z-index: 15;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+  border: 1px solid #cad3d0;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(32, 36, 44, 0.14);
+}
+
+.async-select-options button {
+  width: 100%;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #20242c;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.async-select-options button:hover {
+  background: #eaf5f2;
+}
+
+.async-select-options span {
+  color: #667085;
+  font-size: 0.84rem;
+}
+
 .field-error {
   color: #a33a2b;
   font-weight: 500;

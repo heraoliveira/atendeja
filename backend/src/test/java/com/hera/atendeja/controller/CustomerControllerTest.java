@@ -61,6 +61,22 @@ class CustomerControllerTest {
     }
 
     @Test
+    void shouldSearchActiveCustomersForAutocomplete() throws Exception {
+        CustomerResponse response = customerResponse();
+        when(customerService.searchActive(eq("maria"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1));
+
+        mockMvc.perform(get("/api/v1/customers/search")
+                        .param("q", "maria")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Maria Souza"))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
     void shouldCreateCustomer() throws Exception {
         when(customerService.create(any())).thenReturn(customerResponse());
 

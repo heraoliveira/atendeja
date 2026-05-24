@@ -143,6 +143,43 @@ class PersistenceIntegrationTest {
     }
 
     @Test
+    void shouldSearchOnlyActiveCustomersForAutocompleteByNamePhoneAndEmail() {
+        Customer nameMatch = new Customer();
+        nameMatch.setName("Cliente Mariana");
+        nameMatch.setPhone("11900000001");
+        nameMatch.setEmail("mariana@example.com");
+
+        Customer phoneMatch = new Customer();
+        phoneMatch.setName("Cliente Telefone");
+        phoneMatch.setPhone("21987654321");
+        phoneMatch.setEmail("telefone@example.com");
+
+        Customer emailMatch = new Customer();
+        emailMatch.setName("Cliente Email");
+        emailMatch.setPhone("11900000003");
+        emailMatch.setEmail("agenda.email@example.com");
+
+        Customer inactiveMatch = new Customer();
+        inactiveMatch.setName("Cliente Mariana Inativo");
+        inactiveMatch.setPhone("21987654322");
+        inactiveMatch.setEmail("agenda.email.inativo@example.com");
+        inactiveMatch.setActive(false);
+
+        customerRepository.saveAll(Set.of(nameMatch, phoneMatch, emailMatch, inactiveMatch));
+
+        var byName = customerRepository.searchActive("%mariana%", PageRequest.of(0, 10));
+        var byPhone = customerRepository.searchActive("%987654321%", PageRequest.of(0, 10));
+        var byEmail = customerRepository.searchActive("%agenda.email@example.com%", PageRequest.of(0, 10));
+        var limited = customerRepository.searchActive("%cliente%", PageRequest.of(0, 2));
+
+        assertThat(byName.getContent()).extracting(Customer::getName).containsExactly("Cliente Mariana");
+        assertThat(byPhone.getContent()).extracting(Customer::getName).containsExactly("Cliente Telefone");
+        assertThat(byEmail.getContent()).extracting(Customer::getName).containsExactly("Cliente Email");
+        assertThat(limited.getContent()).hasSize(2);
+        assertThat(limited.getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
     void shouldEnforceUniqueAndCheckConstraintsInPostgreSQL() {
         Customer customer = new Customer();
         customer.setName("Cliente Original");
