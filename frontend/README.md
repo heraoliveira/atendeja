@@ -58,7 +58,7 @@ Variável disponível:
 Valor local padrão:
 
 ```text
-VITE_API_BASE_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:8080/api/v1
 ```
 
 O backend deve permitir a origem do Vite em `CORS_ALLOWED_ORIGINS`, por exemplo:
@@ -102,6 +102,20 @@ docker compose up --build
 ```
 
 No Docker local, o frontend fica em `http://localhost:5173` e consome a API configurada em `VITE_API_BASE_URL`.
+
+## Deploy Na Vercel
+
+Configuração recomendada:
+
+- Root directory: `frontend`.
+- Install command: `npm ci`.
+- Build command: `npm run build`.
+- Output directory: `dist`.
+- Variável obrigatória: `VITE_API_BASE_URL=https://sua-api.onrender.com/api/v1`.
+
+O Vite expõe ao bundle apenas variáveis com prefixo `VITE_`. Após publicar o frontend, configure no backend `CORS_ALLOWED_ORIGINS` com a URL pública da Vercel, sem caminho `/api/v1`.
+
+O arquivo `vercel.json` mantém fallback de rotas SPA para `index.html`, evitando erro ao recarregar páginas internas.
 
 ## Fluxos Disponíveis
 

@@ -2,7 +2,7 @@
 
 AtendeJá é uma aplicação full stack de agenda e fila de atendimento para prestadores locais, como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas.
 
-> Status atual: Fase 7 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, busca de clientes por telefone normalizado, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário, frontend React + TypeScript funcional, testes automatizados ampliados, Docker Compose completo com API/banco/frontend e CI com GitHub Actions. Deploy automático ainda não foi implementado.
+> Status atual: primeira versão estável v1.0.0 preparada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, busca de clientes por telefone normalizado, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário, frontend React + TypeScript funcional, testes automatizados ampliados, Docker Compose completo com API/banco/frontend, CI com GitHub Actions e documentação de deploy real. Deploy automático ainda não foi implementado.
 
 ## Estado Atual
 
@@ -103,9 +103,10 @@ Implementado na Fase 7:
 - GitHub Actions com testes/build do backend, testes/build do frontend e validação/build Docker.
 - Documentação final de execução local, CI e preparação de deploy.
 
-Ainda planejado:
+Preparado para publicação:
 
-- Deploy real em provedor externo, condicionado à configuração de contas, domínios e secrets fora do repositório.
+- Deploy real em Render, PostgreSQL gerenciado no Render e frontend na Vercel, condicionado à configuração de contas e secrets fora do repositório.
+- Domínio próprio e deploy automático avançado permanecem opcionais.
 
 ## Stack Atual
 
@@ -135,11 +136,12 @@ Ainda planejado:
 - Nginx para servir o frontend empacotado
 - GitHub Actions
 
-## Stack Planejada
+## Stack De Deploy Planejada Para A Primeira Publicação
 
-- Deploy backend em Render, Railway ou Fly.io
-- Deploy frontend em Vercel ou Netlify
-- CI/CD com deploy automático somente após configuração segura de credenciais
+- Backend Java 17 + Spring Boot no Render.
+- PostgreSQL gerenciado no Render.
+- Frontend React + TypeScript na Vercel.
+- CI/CD com deploy automático somente após configuração segura de credenciais.
 
 ## Arquitetura Atual
 
@@ -282,7 +284,7 @@ npm run dev
 Frontend local:
 
 - Aplicação web: `http://localhost:5173`
-- Variável da API: `VITE_API_BASE_URL=http://localhost:8080`
+- Variável da API: `VITE_API_BASE_URL=http://localhost:8080/api/v1`
 
 ### Rodar testes do backend
 
@@ -331,27 +333,33 @@ docker compose down -v
 
 ## Variáveis de Ambiente
 
-| Variável | Uso |
-|---|---|
-| `POSTGRES_DB` | Nome do banco PostgreSQL local. |
-| `POSTGRES_USER` | Usuário do banco. |
-| `POSTGRES_PASSWORD` | Senha do banco. |
-| `POSTGRES_PORT` | Porta exposta localmente para o PostgreSQL no host. |
-| `API_PORT` | Porta da API exposta no host pelo Docker Compose. Dentro do container, a API usa `8080`. |
-| `FRONTEND_PORT` | Porta do frontend exposta no host pelo Docker Compose. Dentro do container, o Nginx usa `80`. |
-| `VITE_API_BASE_URL` | URL base da API embutida no build do frontend Vite. No Docker local, use a URL acessível pelo browser, como `http://localhost:8080`. |
-| `JWT_SECRET` | Segredo de assinatura do JWT; deve ter ao menos 32 caracteres. |
-| `JWT_EXPIRATION` | Duração ISO-8601 do access token, como `PT8H`. |
-| `DEMO_AUTH_USERS_ENABLED` | Habilita bootstrap local de usuários de demonstração. |
-| `DEMO_ADMIN_EMAIL` | E-mail do usuário local com role `ADMIN`. |
-| `DEMO_ADMIN_PASSWORD` | Senha local usada para gerar hash BCrypt do admin no bootstrap. |
-| `DEMO_ATTENDANT_EMAIL` | E-mail do usuário local com role `ATTENDANT`. |
-| `DEMO_ATTENDANT_PASSWORD` | Senha local usada para gerar hash BCrypt do atendente no bootstrap. |
-| `CORS_ALLOWED_ORIGINS` | Origens permitidas para chamadas browser/API, separadas por vírgula. |
+| Variável | Onde configurar | Exemplo seguro | Obrigatória | Uso |
+|---|---|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | Render/backend local | `prod` no Render, `dev` local | Sim em produção | Ativa o profile de produção. |
+| `DATABASE_URL` | Render/backend local | `jdbc:postgresql://host:5432/atendeja` | Sim em produção | URL JDBC do PostgreSQL usado pela API. |
+| `DATABASE_USERNAME` | Render/backend local | `atendeja_user` | Sim em produção | Usuário do PostgreSQL. |
+| `DATABASE_PASSWORD` | Render/backend local | `********` | Sim em produção | Senha do PostgreSQL. |
+| `PORT` | Render | `10000` | Automática no Render | Porta HTTP usada pelo Render. |
+| `SERVER_PORT` | Backend local opcional | `8080` | Não | Porta HTTP alternativa para rodar fora do Docker. |
+| `POSTGRES_DB` | Docker Compose local | `atendeja` | Sim local | Nome do banco PostgreSQL local. |
+| `POSTGRES_USER` | Docker Compose local | `atendeja_user` | Sim local | Usuário do banco local. |
+| `POSTGRES_PASSWORD` | Docker Compose local | `change_me_local_password` | Sim local | Senha local; não usar em produção. |
+| `POSTGRES_PORT` | Docker Compose local | `5432` | Não | Porta exposta localmente para o PostgreSQL. |
+| `API_PORT` | Docker Compose local | `8080` | Não | Porta da API exposta no host. |
+| `FRONTEND_PORT` | Docker Compose local | `5173` | Não | Porta do frontend exposta no host. |
+| `VITE_API_BASE_URL` | Vercel/frontend local | `https://sua-api.onrender.com/api/v1` | Sim no frontend | URL base versionada da API embutida no build Vite. |
+| `JWT_SECRET` | Render/backend local | `********` | Sim | Segredo de assinatura do JWT; usar no mínimo 32 caracteres. |
+| `JWT_EXPIRATION` | Render/backend local | `PT8H` | Sim | Duração ISO-8601 do access token. |
+| `DEMO_AUTH_USERS_ENABLED` | Render/backend local | `false` em produção | Não | Habilita bootstrap de usuários de demonstração. |
+| `DEMO_ADMIN_EMAIL` | Backend local/demo | `admin@atendeja.local` | Só se demo habilitado | E-mail do usuário com role `ADMIN`. |
+| `DEMO_ADMIN_PASSWORD` | Backend local/demo | `********` | Só se demo habilitado | Senha usada para gerar hash BCrypt do admin. |
+| `DEMO_ATTENDANT_EMAIL` | Backend local/demo | `attendant@atendeja.local` | Só se demo habilitado | E-mail do usuário com role `ATTENDANT`. |
+| `DEMO_ATTENDANT_PASSWORD` | Backend local/demo | `********` | Só se demo habilitado | Senha usada para gerar hash BCrypt do atendente. |
+| `CORS_ALLOWED_ORIGINS` | Render | `https://seu-frontend.vercel.app` | Sim | Origens permitidas para chamadas browser/API, separadas por vírgula. |
 
-## CI E Preparação De Deploy
+## CI E Deploy Real
 
-O workflow `.github/workflows/ci.yml` roda em pushes e pull requests para `main`:
+O workflow `.github/workflows/ci.yml` roda em pull requests para `main`, pushes em `main` e tags `v*`:
 
 - Testes do backend com Maven Wrapper.
 - Testes do frontend com Vitest.
@@ -359,7 +367,74 @@ O workflow `.github/workflows/ci.yml` roda em pushes e pull requests para `main`
 - Validação de `docker compose config --quiet`.
 - Build das imagens Docker da API e do frontend.
 
-O deploy automático não está habilitado porque exige secrets e configuração de contas fora do repositório. As instruções de preparação estão em [docs/deploy-prep.md](docs/deploy-prep.md).
+O deploy real da primeira publicação é manual pelas plataformas: PostgreSQL gerenciado e backend no Render, frontend na Vercel. Secrets não ficam no GitHub porque tokens, senhas, chaves JWT e URLs privadas de banco precisam ser configurados nos cofres de variáveis de cada provedor.
+
+Contas necessárias:
+
+- GitHub, para hospedar o repositório e a release.
+- Render, para criar o PostgreSQL gerenciado e o Web Service do backend.
+- Vercel, para publicar o frontend.
+
+Opcional:
+
+- Domínio próprio.
+- Conta paga.
+- Deploy automático avançado com secrets de provedor no GitHub Actions.
+
+Ordem recomendada:
+
+1. Criar o PostgreSQL no Render.
+2. Criar o backend no Render apontando para `backend/`.
+3. Configurar variáveis do backend no Render.
+4. Testar `https://sua-api.onrender.com/actuator/health`.
+5. Testar `https://sua-api.onrender.com/swagger-ui.html`.
+6. Criar o frontend na Vercel apontando para `frontend/`.
+7. Configurar `VITE_API_BASE_URL=https://sua-api.onrender.com/api/v1`.
+8. Atualizar `CORS_ALLOWED_ORIGINS` no Render com a URL pública da Vercel.
+9. Testar login, CRUDs, agendamento, conflito `409` e dashboard.
+
+Backend no Render:
+
+- Root directory: `backend`.
+- Build command, se não usar Docker: `./mvnw -B -DskipTests package`.
+- Start command, se não usar Docker: `java -jar target/atendeja-api-1.0.0.jar`.
+- Health check path: `/actuator/health`.
+- Porta: o Render fornece `PORT`; a aplicação também aceita `SERVER_PORT` e mantém `API_PORT` para uso local.
+- Banco: use uma URL JDBC em `DATABASE_URL`, como `jdbc:postgresql://host:5432/atendeja`. Se o Render exibir `postgresql://user:pass@host:5432/db`, converta para o formato JDBC e configure usuário/senha em `DATABASE_USERNAME` e `DATABASE_PASSWORD`.
+- Flyway aplica as migrations automaticamente na inicialização. Se falhar, verifique logs do Render, permissões do usuário do banco, ordem das migrations e se o banco já possui objetos criados manualmente.
+
+Frontend na Vercel:
+
+- Root directory: `frontend`.
+- Install command: `npm ci`.
+- Build command: `npm run build`.
+- Output directory: `dist`.
+- Variável obrigatória: `VITE_API_BASE_URL=https://sua-api.onrender.com/api/v1`.
+- O arquivo `frontend/vercel.json` mantém fallback de rotas SPA para `index.html`.
+
+Checklist pós-deploy:
+
+- API responde em `/actuator/health`.
+- Swagger abre em `/swagger-ui.html`.
+- Login retorna Bearer JWT.
+- Frontend carrega na Vercel.
+- Frontend chama API sem erro de CORS.
+- CRUDs de clientes, profissionais e serviços funcionam.
+- Criação de agendamento funciona.
+- Conflito de agenda retorna `409 Conflict`.
+- Dashboard diário carrega.
+
+Troubleshooting:
+
+- CORS: confirme se `CORS_ALLOWED_ORIGINS` contém exatamente a URL pública da Vercel, sem caminho `/api/v1`.
+- Banco: confirme se `DATABASE_URL` está em formato JDBC e se usuário/senha correspondem ao PostgreSQL do Render.
+- Flyway: confira se a migration falhou por permissão, objeto pré-existente ou banco errado.
+- Frontend sem API: confira se `VITE_API_BASE_URL` foi definida antes do build na Vercel.
+- Backend dormindo: em plano gratuito, o primeiro acesso pode demorar.
+- `401` ou `403`: refaça login e confira a role do usuário.
+- `500` por JWT: confirme se `JWT_SECRET` existe e tem ao menos 32 caracteres.
+
+As instruções detalhadas estão em [docs/deploy-prep.md](docs/deploy-prep.md).
 
 ## Frontend Implementado
 

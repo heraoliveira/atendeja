@@ -13,7 +13,7 @@
 
     <groupId>com.hera</groupId>
     <artifactId>atendeja-api</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>AtendeJa API</name>
     <description>Backend REST API for AtendeJa scheduling platform.</description>
 

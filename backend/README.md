@@ -76,6 +76,32 @@ Para integração com frontend local, configure `CORS_ALLOWED_ORIGINS`; o padrã
 
 No Docker Compose, a API se conecta ao PostgreSQL pelo hostname interno `db` usando `SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/<database>`.
 
+## Deploy No Render
+
+Para publicação real, use `SPRING_PROFILES_ACTIVE=prod` e configure secrets no painel do Render, nunca no repositório.
+
+Configuração sem Docker:
+
+- Root directory: `backend`.
+- Build command: `./mvnw -B -DskipTests package`.
+- Start command: `java -jar target/atendeja-api-1.0.0.jar`.
+- Health check path: `/actuator/health`.
+
+Variáveis principais:
+
+| Variável | Uso |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | Use `prod` no Render. |
+| `DATABASE_URL` | URL JDBC do PostgreSQL gerenciado, como `jdbc:postgresql://host:5432/atendeja`. |
+| `DATABASE_USERNAME` | Usuário do banco. |
+| `DATABASE_PASSWORD` | Senha do banco. |
+| `JWT_SECRET` | Segredo JWT com ao menos 32 caracteres. |
+| `JWT_EXPIRATION` | Duração do token, como `PT8H`. |
+| `CORS_ALLOWED_ORIGINS` | URL pública da Vercel, sem caminho `/api/v1`. |
+| `PORT` | Definida pelo Render; a API lê automaticamente. |
+
+Flyway aplica migrations na inicialização. O Render deve apontar para um banco PostgreSQL vazio ou já versionado pelo Flyway. Instruções completas estão em `../docs/deploy-prep.md`.
+
 ## Testes
 
 No Windows PowerShell:

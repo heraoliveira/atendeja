@@ -111,4 +111,15 @@ describe("apiRequest", () => {
 
     expect(getStoredSession()).toBeNull();
   });
+
+  it("returns a friendly message when the API is unreachable", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    }));
+
+    await expect(apiRequest("/api/v1/dashboard/daily")).rejects.toMatchObject({
+      status: 0,
+      message: "Não foi possível conectar à API. Verifique sua conexão ou tente novamente em instantes."
+    });
+  });
 });
