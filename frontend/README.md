@@ -12,7 +12,8 @@ Implementado:
 - Logout e tratamento de respostas `401` e `403`.
 - Cliente HTTP centralizado com `VITE_API_BASE_URL`.
 - Dashboard diário consumindo `GET /api/v1/dashboard/daily`.
-- Agenda diária com filtros, paginação, criação, remarcação, cancelamento e ações operacionais.
+- Agenda diária com filtros, paginação, criação, remarcação, cancelamento, ações operacionais e status visual derivado "Em atendimento".
+- Busca remota de clientes por nome, e-mail e telefone normalizado.
 - CRUDs funcionais de clientes, profissionais e serviços.
 - Restrições visuais por role para ações administrativas.
 - Mensagens, labels, filtros e feedback em português PT-BR.
@@ -107,8 +108,10 @@ No Docker local, o frontend fica em `http://localhost:5173` e consome a API conf
 - Entrar com e-mail e senha de usuário existente.
 - Consultar dashboard diário por data e profissional.
 - Listar agenda diária com filtros por data, profissional, cliente, serviço e status.
+- Buscar cliente por nome, e-mail ou telefone sem máscara ao filtrar e criar agendamentos.
 - Criar agendamento com cliente, profissional, serviço e horário inicial.
 - Remarcar, cancelar, confirmar, registrar check-in, concluir e marcar falta quando a API permitir.
+- Exibir "Check-in realizado" antes do início agendado e "Em atendimento" quando o agendamento com check-in já alcançou o horário inicial.
 - Criar, editar, listar e inativar clientes.
 - Criar, editar, listar e inativar profissionais como `ADMIN`.
 - Criar, editar, listar e inativar serviços como `ADMIN`.

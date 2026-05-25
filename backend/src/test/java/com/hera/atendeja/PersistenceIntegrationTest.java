@@ -22,6 +22,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,7 +118,7 @@ class PersistenceIntegrationTest {
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = TRUE",
                 Integer.class
         );
-        assertThat(appliedMigrations).isEqualTo(5);
+        assertThat(appliedMigrations).isEqualTo(6);
     }
 
     @Test
@@ -136,7 +137,7 @@ class PersistenceIntegrationTest {
         customerRepository.save(activeCustomer);
         customerRepository.save(inactiveCustomer);
 
-        var result = customerRepository.search("%beatriz%", true, PageRequest.of(0, 10));
+        var result = customerRepository.search("%beatriz%", null, true, PageRequest.of(0, 10));
 
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).getName()).isEqualTo("Beatriz Silva");
@@ -151,7 +152,7 @@ class PersistenceIntegrationTest {
 
         Customer phoneMatch = new Customer();
         phoneMatch.setName("Cliente Telefone");
-        phoneMatch.setPhone("21987654321");
+        phoneMatch.setPhone("(67) 2643-1365");
         phoneMatch.setEmail("telefone@example.com");
 
         Customer emailMatch = new Customer();
@@ -167,13 +168,17 @@ class PersistenceIntegrationTest {
 
         customerRepository.saveAll(Set.of(nameMatch, phoneMatch, emailMatch, inactiveMatch));
 
-        var byName = customerRepository.searchActive("%mariana%", PageRequest.of(0, 10));
-        var byPhone = customerRepository.searchActive("%987654321%", PageRequest.of(0, 10));
-        var byEmail = customerRepository.searchActive("%agenda.email@example.com%", PageRequest.of(0, 10));
-        var limited = customerRepository.searchActive("%cliente%", PageRequest.of(0, 2));
+        var byName = customerRepository.searchActive("%mariana%", null, PageRequest.of(0, 10));
+        var byPhoneWithAreaCode = customerRepository.searchActive("%672643%", "%672643%", PageRequest.of(0, 10));
+        var byPhoneWithoutAreaCode = customerRepository.searchActive("%26431365%", "%26431365%", PageRequest.of(0, 10));
+        var byFullPhoneDigits = customerRepository.searchActive("%6726431365%", "%6726431365%", PageRequest.of(0, 10));
+        var byEmail = customerRepository.searchActive("%agenda.email@example.com%", null, PageRequest.of(0, 10));
+        var limited = customerRepository.searchActive("%cliente%", null, PageRequest.of(0, 2));
 
         assertThat(byName.getContent()).extracting(Customer::getName).containsExactly("Cliente Mariana");
-        assertThat(byPhone.getContent()).extracting(Customer::getName).containsExactly("Cliente Telefone");
+        assertThat(byPhoneWithAreaCode.getContent()).extracting(Customer::getName).containsExactly("Cliente Telefone");
+        assertThat(byPhoneWithoutAreaCode.getContent()).extracting(Customer::getName).containsExactly("Cliente Telefone");
+        assertThat(byFullPhoneDigits.getContent()).extracting(Customer::getName).containsExactly("Cliente Telefone");
         assertThat(byEmail.getContent()).extracting(Customer::getName).containsExactly("Cliente Email");
         assertThat(limited.getContent()).hasSize(2);
         assertThat(limited.getTotalElements()).isEqualTo(3);
@@ -237,7 +242,7 @@ class PersistenceIntegrationTest {
         appointment.setStatus(AppointmentStatus.SCHEDULED);
         appointmentRepository.saveAndFlush(appointment);
 
-        Set<AppointmentStatus> nonBlockingStatuses = Set.of(AppointmentStatus.CANCELED, AppointmentStatus.NO_SHOW);
+        List<String> nonBlockingStatuses = List.of(AppointmentStatus.CANCELED.name(), AppointmentStatus.NO_SHOW.name());
 
         boolean overlappingConflict = appointmentRepository.existsScheduleConflict(
                 professional.getId(),
@@ -279,6 +284,76 @@ class PersistenceIntegrationTest {
 
         assertThat(canceledAppointmentConflict).isFalse();
         assertThat(noShowAppointmentConflict).isFalse();
+    }
+
+    @Test
+    void shouldUseCompletedAtAndServiceBufferWhenDetectingAppointmentConflict() {
+        Customer customer = new Customer();
+        customer.setName("Cliente Conclusao");
+        customer.setPhone("21999990030");
+        customerRepository.save(customer);
+
+        Professional professional = new Professional();
+        professional.setName("Profissional Conclusao");
+        professional.setPhone("21999990031");
+        professionalRepository.save(professional);
+
+        ServiceCatalog service = new ServiceCatalog();
+        service.setName("Consulta com intervalo");
+        service.setDurationMinutes(40);
+        service.setBufferMinutes(5);
+        service.setPrice(new BigDecimal("120.00"));
+        serviceCatalogRepository.save(service);
+
+        Appointment appointment = new Appointment();
+        appointment.setCustomer(customer);
+        appointment.setProfessional(professional);
+        appointment.setService(service);
+        appointment.setStartAt(Instant.parse("2030-01-20T20:04:00Z"));
+        appointment.setEndAt(Instant.parse("2030-01-20T20:49:00Z"));
+        appointment.setStatus(AppointmentStatus.CHECKED_IN);
+        appointmentRepository.saveAndFlush(appointment);
+
+        List<String> nonBlockingStatuses = List.of(AppointmentStatus.CANCELED.name(), AppointmentStatus.NO_SHOW.name());
+
+        boolean inProgressConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T20:10:00Z"),
+                Instant.parse("2030-01-20T20:30:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointment.setCompletedAt(Instant.parse("2030-01-20T20:05:00Z"));
+        appointmentRepository.saveAndFlush(appointment);
+
+        boolean insideBufferConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T20:09:00Z"),
+                Instant.parse("2030-01-20T20:30:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+        boolean exactBufferBoundaryConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T20:10:00Z"),
+                Instant.parse("2030-01-20T20:30:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+        boolean afterBufferConflict = appointmentRepository.existsScheduleConflict(
+                professional.getId(),
+                Instant.parse("2030-01-20T20:11:00Z"),
+                Instant.parse("2030-01-20T20:30:00Z"),
+                null,
+                nonBlockingStatuses
+        );
+
+        assertThat(inProgressConflict).isTrue();
+        assertThat(insideBufferConflict).isTrue();
+        assertThat(exactBufferBoundaryConflict).isFalse();
+        assertThat(afterBufferConflict).isFalse();
     }
 
     @Test

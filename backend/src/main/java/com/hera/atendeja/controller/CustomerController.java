@@ -46,7 +46,7 @@ public class CustomerController {
     }
 
     @GetMapping("/search")
-    @Operation(summary = "Busca clientes ativos para autocomplete")
+    @Operation(summary = "Busca clientes ativos para autocomplete por nome, e-mail ou telefone")
     public PageResponse<CustomerResponse> searchActive(
             @RequestParam("q") String query,
             @PageableDefault(size = 10, sort = "name") Pageable pageable

@@ -54,6 +54,9 @@ public class Appointment {
     @Column(name = "checked_in_at")
     private Instant checkedInAt;
 
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -146,6 +149,14 @@ public class Appointment {
 
     public void setCheckedInAt(Instant checkedInAt) {
         this.checkedInAt = checkedInAt;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(Instant completedAt) {
+        this.completedAt = completedAt;
     }
 
     public Instant getCreatedAt() {

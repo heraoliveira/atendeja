@@ -3,7 +3,7 @@ package com.hera.atendeja.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -80,7 +80,7 @@ class AppointmentServiceTest {
         Professional professional = professional();
         ServiceCatalog service = service(45, 15);
         mockActiveResources(customer, professional, service);
-        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(startAt), eq(startAt.plusSeconds(3600)), eq(null), anyCollection()))
+        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(startAt), eq(startAt.plusSeconds(3600)), eq(null), anyList()))
                 .thenReturn(false);
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -103,7 +103,7 @@ class AppointmentServiceTest {
         Instant startAt = Instant.parse("2030-01-20T10:30:00Z");
         ServiceCatalog service = service(45, 15);
         mockActiveResources(customer(), professional(), service);
-        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(startAt), eq(startAt.plusSeconds(3600)), eq(null), anyCollection()))
+        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(startAt), eq(startAt.plusSeconds(3600)), eq(null), anyList()))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> appointmentService.create(new AppointmentCreateRequest(1L, 2L, 3L, startAt)))
@@ -116,7 +116,7 @@ class AppointmentServiceTest {
         Instant startAt = Instant.parse("2030-01-20T11:00:00Z");
         ServiceCatalog service = service(45, 15);
         mockActiveResources(customer(), professional(), service);
-        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(startAt), eq(startAt.plusSeconds(3600)), eq(null), anyCollection()))
+        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(startAt), eq(startAt.plusSeconds(3600)), eq(null), anyList()))
                 .thenReturn(false);
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -131,7 +131,7 @@ class AppointmentServiceTest {
         Appointment appointment = appointment();
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
         when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(appointment.getProfessional()));
-        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(newStartAt), eq(newStartAt.plusSeconds(3600)), eq(10L), anyCollection()))
+        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(newStartAt), eq(newStartAt.plusSeconds(3600)), eq(10L), anyList()))
                 .thenReturn(false);
 
         appointmentService.reschedule(10L, new AppointmentRescheduleRequest(newStartAt));
@@ -147,7 +147,7 @@ class AppointmentServiceTest {
         Appointment appointment = appointment();
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
         when(professionalRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(appointment.getProfessional()));
-        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(newStartAt), eq(newStartAt.plusSeconds(3600)), eq(10L), anyCollection()))
+        when(appointmentRepository.existsScheduleConflict(eq(2L), eq(newStartAt), eq(newStartAt.plusSeconds(3600)), eq(10L), anyList()))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> appointmentService.reschedule(10L, new AppointmentRescheduleRequest(newStartAt)))
@@ -187,7 +187,7 @@ class AppointmentServiceTest {
     }
 
     @Test
-    void shouldCheckInConfirmedAppointmentOnBusinessDate() {
+    void shouldCheckInConfirmedAppointmentInsideAllowedWindow() {
         Appointment appointment = appointment();
         appointment.setStatus(AppointmentStatus.CONFIRMED);
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
@@ -199,27 +199,78 @@ class AppointmentServiceTest {
     }
 
     @Test
-    void shouldBlockCheckInOutsideBusinessDate() {
+    void shouldBlockCheckInTooEarlyBeforeAllowedWindow() {
         Appointment appointment = appointment();
         appointment.setStatus(AppointmentStatus.CONFIRMED);
-        appointment.setStartAt(Instant.parse("2030-01-21T10:00:00Z"));
+        appointment.setStartAt(Instant.parse("2030-01-20T12:00:00Z"));
+        appointment.setEndAt(Instant.parse("2030-01-20T13:00:00Z"));
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
 
         assertThatThrownBy(() -> appointmentService.checkIn(10L))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("dia do agendamento");
+                .hasMessageContaining("próximo ao horário agendado");
     }
 
-    @ParameterizedTest
-    @EnumSource(value = AppointmentStatus.class, names = {"CONFIRMED", "CHECKED_IN"})
-    void shouldCompleteAllowedOperationalAppointments(AppointmentStatus status) {
+    @Test
+    void shouldBlockCheckInAfterAppointmentEnd() {
         Appointment appointment = appointment();
-        appointment.setStatus(status);
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setStartAt(Instant.parse("2030-01-20T08:00:00Z"));
+        appointment.setEndAt(Instant.parse("2030-01-20T09:00:00Z"));
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThatThrownBy(() -> appointmentService.checkIn(10L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("próximo ao horário agendado");
+    }
+
+    @Test
+    void shouldCompleteCheckedInAppointmentAfterStartTime() {
+        Appointment appointment = appointment();
+        appointment.setStatus(AppointmentStatus.CHECKED_IN);
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
 
         appointmentService.complete(10L);
 
         assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.COMPLETED);
+        assertThat(appointment.getCompletedAt()).isEqualTo(Instant.parse("2030-01-20T10:30:00Z"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AppointmentStatus.class, names = {"SCHEDULED", "CONFIRMED"})
+    void shouldBlockCompleteWithoutCheckIn(AppointmentStatus status) {
+        Appointment appointment = appointment();
+        appointment.setStatus(status);
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThatThrownBy(() -> appointmentService.complete(10L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("sem check-in");
+    }
+
+    @Test
+    void shouldBlockCompleteBeforeAppointmentStartTime() {
+        Appointment appointment = appointment();
+        appointment.setStatus(AppointmentStatus.CHECKED_IN);
+        appointment.setStartAt(Instant.parse("2030-01-20T11:00:00Z"));
+        appointment.setEndAt(Instant.parse("2030-01-20T12:00:00Z"));
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThatThrownBy(() -> appointmentService.complete(10L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("antes do horário de início");
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AppointmentStatus.class, names = {"COMPLETED", "CANCELED", "NO_SHOW"})
+    void shouldBlockCompleteWhenAppointmentStatusIsClosed(AppointmentStatus status) {
+        Appointment appointment = appointment();
+        appointment.setStatus(status);
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThatThrownBy(() -> appointmentService.complete(10L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não podem alterar status");
     }
 
     @Test

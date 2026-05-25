@@ -27,6 +27,7 @@ import type {
   ServiceResponse
 } from "../types/api";
 import {
+  appointmentStatusLabels,
   appointmentStatusOptions,
   formatDateTime,
   localDateTimeToInstant,
@@ -59,6 +60,34 @@ const emptyPage: PageResponse<AppointmentResponse> = {
   last: true
 };
 
+const CHECKIN_EARLY_MINUTES = 60;
+const MINUTE_IN_MILLISECONDS = 60 * 1000;
+
+function canCheckInAppointment(appointment: AppointmentResponse, currentTimeMillis: number) {
+  const startAtMillis = new Date(appointment.startAt).getTime();
+  const endAtMillis = new Date(appointment.endAt).getTime();
+  const checkInOpenAtMillis = startAtMillis - CHECKIN_EARLY_MINUTES * MINUTE_IN_MILLISECONDS;
+
+  return appointment.status === "CONFIRMED"
+    && currentTimeMillis >= checkInOpenAtMillis
+    && currentTimeMillis <= endAtMillis;
+}
+
+function canCompleteAppointment(appointment: AppointmentResponse, currentTimeMillis: number) {
+  const startAtMillis = new Date(appointment.startAt).getTime();
+
+  return appointment.status === "CHECKED_IN"
+    && currentTimeMillis >= startAtMillis;
+}
+
+function getAppointmentStatusLabel(appointment: AppointmentResponse, currentTimeMillis: number) {
+  if (canCompleteAppointment(appointment, currentTimeMillis)) {
+    return "Em atendimento";
+  }
+
+  return appointmentStatusLabels[appointment.status];
+}
+
 export function AppointmentsPage() {
   const [date, setDate] = useState(toDateInputValue());
   const [professionalId, setProfessionalId] = useState("");
@@ -75,6 +104,7 @@ export function AppointmentsPage() {
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [operationStartAt, setOperationStartAt] = useState("");
   const [operationReason, setOperationReason] = useState("");
+  const [currentTimeMillis, setCurrentTimeMillis] = useState(() => Date.now());
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<AppointmentFormValues>({
     defaultValues: {
       customerId: "",
@@ -94,6 +124,11 @@ export function AppointmentsPage() {
         setServices(servicePage.content);
       })
       .catch((caught) => setError(getApiErrorMessage(caught)));
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setCurrentTimeMillis(Date.now()), MINUTE_IN_MILLISECONDS);
+    return () => window.clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -282,15 +317,20 @@ export function AppointmentsPage() {
                         <td>{appointment.customerName}</td>
                         <td>{appointment.professionalName}</td>
                         <td>{appointment.serviceName}</td>
-                        <td><StatusBadge status={appointment.status} /></td>
+                        <td>
+                          <StatusBadge
+                            status={appointment.status}
+                            label={getAppointmentStatusLabel(appointment, currentTimeMillis)}
+                          />
+                        </td>
                         <td className="table-actions">
                           {appointment.status === "SCHEDULED" ? (
                             <button type="button" className="button-secondary" onClick={() => runSimpleAction("confirm", appointment)}>Confirmar</button>
                           ) : null}
-                          {appointment.status === "CONFIRMED" ? (
+                          {canCheckInAppointment(appointment, currentTimeMillis) ? (
                             <button type="button" className="button-secondary" onClick={() => runSimpleAction("checkIn", appointment)}>Check-in</button>
                           ) : null}
-                          {appointment.status === "CONFIRMED" || appointment.status === "CHECKED_IN" ? (
+                          {canCompleteAppointment(appointment, currentTimeMillis) ? (
                             <button type="button" className="button-secondary" onClick={() => runSimpleAction("complete", appointment)}>Concluir</button>
                           ) : null}
                           {appointment.status === "SCHEDULED" || appointment.status === "CONFIRMED" ? (

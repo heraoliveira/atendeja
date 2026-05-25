@@ -126,6 +126,7 @@ export interface AppointmentResponse {
   cancelReason: string | null;
   noShowReason: string | null;
   checkedInAt: string | null;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

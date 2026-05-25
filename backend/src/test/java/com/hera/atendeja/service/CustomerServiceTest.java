@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -106,7 +107,7 @@ class CustomerServiceTest {
         customer.setEmail("maria@example.com");
         customer.setDocument("12345678900");
         var pageable = PageRequest.of(0, 10);
-        when(customerRepository.search("%maria%", true, pageable))
+        when(customerRepository.search("%maria%", null, true, pageable))
                 .thenReturn(new PageImpl<>(List.of(customer), pageable, 1));
 
         var result = customerService.findAll(" Maria ", true, pageable);
@@ -122,16 +123,31 @@ class CustomerServiceTest {
         customer.setPhone("11999999999");
         customer.setEmail("maria@example.com");
         Pageable requestedPageable = PageRequest.of(0, 100, Sort.by("name"));
-        when(customerRepository.searchActive(eq("%maria%"), any(Pageable.class)))
+        when(customerRepository.searchActive(eq("%maria%"), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(customer), PageRequest.of(0, 20, Sort.by("name")), 1));
 
         var result = customerService.searchActive(" Maria ", requestedPageable);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(customerRepository).searchActive(eq("%maria%"), pageableCaptor.capture());
+        verify(customerRepository).searchActive(eq("%maria%"), isNull(), pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).name()).isEqualTo("Maria Souza");
+    }
+
+    @Test
+    void shouldSearchActiveCustomersWithNormalizedPhoneDigits() {
+        Customer customer = new Customer();
+        customer.setName("Maria Souza");
+        customer.setPhone("(67) 2643-1365");
+        Pageable pageable = PageRequest.of(0, 10);
+        when(customerRepository.searchActive(eq("%672643%"), eq("%672643%"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(customer), pageable, 1));
+
+        var result = customerService.searchActive("672643", pageable);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).phone()).isEqualTo("(67) 2643-1365");
     }
 
     @Test
@@ -141,7 +157,7 @@ class CustomerServiceTest {
         var result = customerService.searchActive("m", pageable);
 
         assertThat(result.getContent()).isEmpty();
-        verify(customerRepository, never()).searchActive(any(), any(Pageable.class));
+        verify(customerRepository, never()).searchActive(any(), any(), any(Pageable.class));
     }
 
     @Test

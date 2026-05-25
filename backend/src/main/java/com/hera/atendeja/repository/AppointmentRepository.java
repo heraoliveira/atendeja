@@ -3,7 +3,6 @@ package com.hera.atendeja.repository;
 import com.hera.atendeja.entity.Appointment;
 import com.hera.atendeja.entity.AppointmentStatus;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -19,21 +18,30 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @EntityGraph(attributePaths = {"customer", "professional", "service"})
     Optional<Appointment> findById(Long id);
 
-    @Query("""
-            SELECT CASE WHEN COUNT(appointment) > 0 THEN true ELSE false END
-            FROM Appointment appointment
-            WHERE appointment.professional.id = :professionalId
-              AND appointment.startAt < :newEndAt
-              AND appointment.endAt > :newStartAt
-              AND appointment.status NOT IN :nonBlockingStatuses
-              AND (:ignoredAppointmentId IS NULL OR appointment.id <> :ignoredAppointmentId)
-            """)
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM appointments appointment
+                JOIN services service ON service.id = appointment.service_id
+                WHERE appointment.professional_id = :professionalId
+                  AND appointment.start_at < :newEndAt
+                  AND (
+                    CASE
+                        WHEN appointment.status = 'COMPLETED' AND appointment.completed_at IS NOT NULL
+                            THEN appointment.completed_at + (service.buffer_minutes * INTERVAL '1 minute')
+                        ELSE appointment.end_at
+                    END
+                  ) > :newStartAt
+                  AND appointment.status NOT IN (:nonBlockingStatuses)
+                  AND (:ignoredAppointmentId IS NULL OR appointment.id <> :ignoredAppointmentId)
+            )
+            """, nativeQuery = true)
     boolean existsScheduleConflict(
             @Param("professionalId") Long professionalId,
             @Param("newStartAt") Instant newStartAt,
             @Param("newEndAt") Instant newEndAt,
             @Param("ignoredAppointmentId") Long ignoredAppointmentId,
-            @Param("nonBlockingStatuses") Collection<AppointmentStatus> nonBlockingStatuses
+            @Param("nonBlockingStatuses") List<String> nonBlockingStatuses
     );
 
     @EntityGraph(attributePaths = {"customer", "professional", "service"})

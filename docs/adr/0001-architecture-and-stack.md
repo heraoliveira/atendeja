@@ -19,9 +19,10 @@ Stack implementada até a Fase 7:
 - Persistência com PostgreSQL, Spring Data JPA e Flyway.
 - API REST versionada em `/api/v1`.
 - CRUDs iniciais de clientes, profissionais e serviços.
+- Busca de clientes por nome, e-mail e telefone normalizado.
 - Contrato paginado estável com `PageResponse<T>` nas listagens.
 - Agendamentos com criação, listagem, detalhe, remarcação, cancelamento e transições operacionais.
-- Regra de conflito por profissional com cálculo de `endAt` no backend.
+- Regra de conflito por profissional com cálculo de `endAt` no backend e uso de `completedAt + buffer` após conclusão antecipada.
 - Autenticação Bearer JWT com Spring Security, hash BCrypt e roles.
 - Calendário profissional com disponibilidade semanal e exceções por data.
 - Dashboard diário com indicadores operacionais e ocupação por disponibilidade real.

@@ -8,9 +8,10 @@ O backend contém a base das Fases 1, 2, 3, pré-Fase 4, Fase 4 e empacotamento 
 
 - CRUDs de clientes, profissionais e serviços.
 - Listagens paginadas com contrato `PageResponse<T>`.
-- Migrations Flyway para o schema inicial, índices, agendamentos, usuários e calendário profissional.
+- Busca de clientes por nome, e-mail e telefone normalizado apenas com dígitos.
+- Migrations Flyway para o schema inicial, índices, agendamentos, usuários, calendário profissional e horário real de conclusão.
 - Módulo de agendamentos com criação, listagem, detalhe, remarcação, cancelamento e transições operacionais.
-- Regra de conflito de horários por profissional, usando intervalo semiaberto `[startAt, endAt)`.
+- Regra de conflito de horários por profissional, usando intervalo semiaberto `[startAt, effectiveEndAt)`.
 - Login Bearer JWT com expiração configurável, senhas BCrypt e roles `ADMIN` e `ATTENDANT`.
 - Disponibilidade semanal e exceções por data para profissionais.
 - Dashboard diário com indicadores de agenda, cancelamentos, faltas e ocupação.
@@ -102,6 +103,7 @@ mvn test -Dtest=PersistenceIntegrationTest
 | Método | Rota | Objetivo |
 |---|---|---|
 | `GET` | `/api/v1/customers` | Lista clientes com paginação e filtros. |
+| `GET` | `/api/v1/customers/search?q=` | Busca clientes ativos para autocomplete por nome, e-mail ou telefone normalizado. |
 | `GET` | `/api/v1/customers/{id}` | Busca cliente por id. |
 | `POST` | `/api/v1/customers` | Cria cliente. |
 | `PUT` | `/api/v1/customers/{id}` | Atualiza cliente. |
@@ -138,8 +140,8 @@ mvn test -Dtest=PersistenceIntegrationTest
 | Método | Rota | Objetivo |
 |---|---|---|
 | `PATCH` | `/api/v1/appointments/{id}/confirm` | Confirma agendamento pendente. |
-| `PATCH` | `/api/v1/appointments/{id}/check-in` | Registra check-in em agendamento confirmado do dia. |
-| `PATCH` | `/api/v1/appointments/{id}/complete` | Conclui agendamento confirmado ou com check-in. |
+| `PATCH` | `/api/v1/appointments/{id}/check-in` | Registra check-in em agendamento confirmado dentro da janela operacional. |
+| `PATCH` | `/api/v1/appointments/{id}/complete` | Conclui agendamento com check-in e horário inicial já alcançado. |
 | `PATCH` | `/api/v1/appointments/{id}/no-show` | Registra falta após o horário final previsto. |
 | `GET` | `/api/v1/professionals/{professionalId}/availability-rules` | Lista disponibilidade semanal. |
 | `POST` | `/api/v1/professionals/{professionalId}/availability-rules` | Cria regra semanal. |
@@ -174,9 +176,22 @@ Envie o token retornado em `Authorization: Bearer <accessToken>` para os endpoin
 
 Um profissional não pode ter dois agendamentos ativos em horários sobrepostos. A API calcula `endAt` no backend usando `durationMinutes + bufferMinutes` do serviço.
 
-O intervalo é semiaberto: `[startAt, endAt)`. Assim, um agendamento pode começar exatamente no horário em que outro termina.
+O intervalo é semiaberto: `[startAt, effectiveEndAt)`. Assim, um agendamento pode começar exatamente no horário em que outro termina. Para agendamentos ainda abertos, `effectiveEndAt` é o `endAt` previsto. Para agendamentos `COMPLETED` com `completedAt`, a query usa `completedAt + service.bufferMinutes`, liberando a agenda após conclusão antecipada e intervalo técnico do serviço.
 
 Agendamentos com status `CANCELED` ou `NO_SHOW` não bloqueiam novos horários.
+
+## Fluxo Operacional De Status
+
+O fluxo principal é `SCHEDULED` -> `CONFIRMED` -> `CHECKED_IN` -> `COMPLETED`.
+
+- Check-in só é permitido para `CONFIRMED`, de 60 minutos antes de `startAt` até `endAt`.
+- Conclusão só é permitida para `CHECKED_IN` quando o horário atual do servidor é igual ou posterior a `startAt`.
+- `COMPLETED`, `CANCELED` e `NO_SHOW` são estados fechados para novas transições operacionais.
+- "Em atendimento" é status visual derivado no frontend quando `status=CHECKED_IN` e o horário atual já alcançou `startAt`; o backend persiste `CHECKED_IN`.
+
+## Busca De Clientes
+
+`GET /api/v1/customers` e `GET /api/v1/customers/search?q=` pesquisam por nome, e-mail e telefone. Para telefone, a consulta também remove caracteres não numéricos no PostgreSQL, permitindo encontrar `(67) 2643-1365` por `672643`, `26431365` ou `6726431365`.
 
 ## Calendário Profissional
 
