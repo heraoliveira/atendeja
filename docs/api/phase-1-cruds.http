@@ -20,6 +20,10 @@ Content-Type: application/json
 GET {{baseUrl}}/api/v1/customers?search=maria&active=true&page=0&size=10
 Authorization: Bearer {{accessToken}}
 
+### Buscar cliente ativo por telefone sem máscara
+GET {{baseUrl}}/api/v1/customers/search?q=6726431365&page=0&size=10
+Authorization: Bearer {{accessToken}}
+
 ### Criar profissional
 POST {{baseUrl}}/api/v1/professionals
 Authorization: Bearer {{accessToken}}

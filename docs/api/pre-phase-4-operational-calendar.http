@@ -10,10 +10,12 @@ PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/confirm
 Authorization: Bearer {{accessToken}}
 
 ### Registrar check-in
+# Permitido apenas de 60 minutos antes do início até o fim previsto.
 PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/check-in
 Authorization: Bearer {{accessToken}}
 
 ### Concluir atendimento
+# Exige check-in e horário atual do servidor igual ou posterior ao início.
 PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/complete
 Authorization: Bearer {{accessToken}}
 

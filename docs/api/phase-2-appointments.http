@@ -52,6 +52,10 @@ Content-Type: application/json
   "startAt": "2030-01-20T11:00:00Z"
 }
 
+### Observação
+# Agendamentos concluídos bloqueiam a agenda até completedAt + bufferMinutes do serviço.
+# Agendamentos ainda abertos continuam bloqueando até o endAt previsto.
+
 ### Remarcar agendamento
 PATCH {{baseUrl}}/api/v1/appointments/{{appointmentId}}/reschedule
 Authorization: Bearer {{accessToken}}

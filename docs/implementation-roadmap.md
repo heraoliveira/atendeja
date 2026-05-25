@@ -25,6 +25,7 @@ Critérios de aceite:
 - Aplicação Spring Boot sobe localmente.
 - Flyway aplica `V1__init.sql`.
 - CRUDs iniciais funcionam em `/api/v1`.
+- Busca de clientes funciona por nome, e-mail e telefone normalizado.
 - Swagger abre localmente.
 - Testes básicos passam.
 
@@ -38,6 +39,7 @@ Critérios de aceite:
 
 - Criar agendamento válido retorna `201`.
 - Tentar horário sobreposto retorna `409`.
+- Agendamento concluído antecipadamente libera horário após `completedAt + bufferMinutes`.
 - Remarcação recalcula horário final.
 - Cancelamento exige motivo.
 - Criação e remarcação usam transação e bloqueio pessimista por profissional.
@@ -63,6 +65,7 @@ Objetivo: preparar o domínio do dashboard com transições operacionais de agen
 Critérios de aceite:
 
 - Confirmação, check-in, conclusão e falta aplicam transições válidas.
+- Check-in respeita janela operacional e conclusão exige check-in e início do horário.
 - Regras semanais e exceções por data persistem com constraints de período.
 - Escrita do calendário profissional exige role `ADMIN`.
 - Dashboard ainda não é exposto nesta etapa.

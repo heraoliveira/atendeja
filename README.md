@@ -2,7 +2,7 @@
 
 AtendeJá é uma aplicação full stack de agenda e fila de atendimento para prestadores locais, como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas.
 
-> Status atual: Fase 7 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário, frontend React + TypeScript funcional, testes automatizados ampliados, Docker Compose completo com API/banco/frontend e CI com GitHub Actions. Deploy automático ainda não foi implementado.
+> Status atual: Fase 7 implementada. O repositório contém API Spring Boot com Maven Wrapper, PostgreSQL, Flyway, OpenAPI, Actuator, CRUDs iniciais, busca de clientes por telefone normalizado, agendamentos com regra de conflito por profissional, autenticação Bearer JWT, transições operacionais de atendimento, calendário de disponibilidade profissional, dashboard diário, frontend React + TypeScript funcional, testes automatizados ampliados, Docker Compose completo com API/banco/frontend e CI com GitHub Actions. Deploy automático ainda não foi implementado.
 
 ## Estado Atual
 
@@ -20,6 +20,7 @@ Implementado na Fase 1:
 - Persistência com Spring Data JPA, PostgreSQL e Flyway.
 - Migrations `V1__init.sql` e `V2__indexes.sql`.
 - CRUDs de `customers`, `professionals` e `services`.
+- Busca remota de clientes por nome, e-mail e telefone, comparando também telefone normalizado apenas com dígitos.
 - Validação com Bean Validation.
 - Tratamento global de erros com `ProblemDetail`.
 - Swagger UI em `/swagger-ui.html`.
@@ -32,7 +33,8 @@ Implementado na Fase 2:
 - Migration `V3__appointments.sql` com FKs, constraints e índices para listagem e conflito de agenda.
 - Endpoints de criação, listagem, detalhe, remarcação e cancelamento de agendamentos.
 - Cálculo de `endAt` no backend com base em `durationMinutes + bufferMinutes` do serviço.
-- Regra de conflito por profissional usando intervalo semiaberto `[startAt, endAt)`.
+- Regra de conflito por profissional usando intervalo semiaberto `[startAt, effectiveEndAt)`.
+- Registro de `completedAt` para liberar agenda após conclusão antecipada, respeitando o buffer do serviço.
 - Retorno `409 Conflict` para sobreposição de horários.
 - Testes unitários, testes de controller e teste de integração com PostgreSQL real para a regra de conflito.
 
@@ -75,7 +77,7 @@ Implementado na Fase 5:
 - Cliente HTTP centralizado com `VITE_API_BASE_URL`.
 - Tratamento de `401`, `403`, erros de validação e conflitos retornados pela API.
 - Dashboard diário com filtros por data e profissional.
-- Agenda diária com filtros, paginação, criação, remarcação, cancelamento e ações operacionais.
+- Agenda diária com filtros, paginação, criação, remarcação, cancelamento, ações operacionais e status visual derivado `Em atendimento`.
 - CRUDs de clientes, profissionais e serviços consumindo os endpoints existentes.
 - Ocultação de ações administrativas para `ATTENDANT`, mantendo a API como fonte real de autorização.
 
@@ -378,6 +380,7 @@ Fluxos disponíveis:
 - Logout.
 - Consulta de indicadores diários por data e profissional.
 - Listagem da agenda com filtros por data, profissional, cliente, serviço e status.
+- Busca remota de clientes por nome, e-mail ou telefone sem máscara na criação e no filtro de agendamentos.
 - Criação, remarcação, cancelamento, confirmação, check-in, conclusão e falta em agendamentos.
 - CRUD de clientes.
 - CRUD administrativo de profissionais e serviços.
@@ -403,6 +406,7 @@ Textos visíveis, mensagens e feedbacks ficam em português PT-BR. Código, rota
 | Método | Rota | Objetivo |
 |---|---|---|
 | `GET` | `/api/v1/customers` | Lista clientes com paginação e filtros. |
+| `GET` | `/api/v1/customers/search?q=` | Busca clientes ativos para autocomplete por nome, e-mail ou telefone normalizado. |
 | `GET` | `/api/v1/customers/{id}` | Busca cliente por id. |
 | `POST` | `/api/v1/customers` | Cria cliente. |
 | `PUT` | `/api/v1/customers/{id}` | Atualiza cliente. |
@@ -438,8 +442,8 @@ Textos visíveis, mensagens e feedbacks ficam em português PT-BR. Código, rota
 | `PATCH` | `/api/v1/appointments/{id}/reschedule` | Remarca agendamento. |
 | `PATCH` | `/api/v1/appointments/{id}/cancel` | Cancela agendamento. |
 | `PATCH` | `/api/v1/appointments/{id}/confirm` | Confirma agendamento pendente. |
-| `PATCH` | `/api/v1/appointments/{id}/check-in` | Registra check-in em agendamento confirmado do dia. |
-| `PATCH` | `/api/v1/appointments/{id}/complete` | Conclui agendamento confirmado ou com check-in. |
+| `PATCH` | `/api/v1/appointments/{id}/check-in` | Registra check-in em agendamento confirmado dentro da janela operacional. |
+| `PATCH` | `/api/v1/appointments/{id}/complete` | Conclui agendamento com check-in e horário inicial já alcançado. |
 | `PATCH` | `/api/v1/appointments/{id}/no-show` | Registra falta após o horário final previsto. |
 
 ### Calendário Profissional
@@ -527,13 +531,15 @@ endAt = startAt + service.durationMinutes + service.bufferMinutes
 
 A regra central do AtendeJá impede que um mesmo profissional tenha dois agendamentos ativos com horários sobrepostos.
 
-O intervalo é tratado como semiaberto: `[startAt, endAt)`. Isso significa que um agendamento pode começar exatamente no horário em que outro termina, sem gerar conflito.
+O intervalo é tratado como semiaberto: `[startAt, effectiveEndAt)`. Isso significa que um agendamento pode começar exatamente no horário em que outro termina, sem gerar conflito.
+
+Para agendamentos ainda abertos, `effectiveEndAt` é o `endAt` previsto, calculado com duração e buffer do serviço. Para agendamentos concluídos com `completedAt`, a agenda fica bloqueada até `completedAt + service.bufferMinutes`. Assim, uma conclusão antecipada libera novos horários depois do intervalo técnico do serviço, sem esperar até o fim previsto originalmente.
 
 A condição usada para detectar conflito é:
 
 ```sql
 existing.start_at < :newEndAt
-AND existing.end_at > :newStartAt
+AND existing.effective_end_at > :newStartAt
 AND existing.professional_id = :professionalId
 AND existing.status NOT IN ('CANCELED', 'NO_SHOW')
 ```
@@ -557,7 +563,15 @@ Os status existentes no backend são:
 - `CANCELED`
 - `NO_SHOW`
 
-Nesta pré-Fase 4, a API também confirma agendamentos, registra check-in, conclui atendimentos e marca falta.
+O fluxo operacional esperado é `SCHEDULED` -> `CONFIRMED` -> `CHECKED_IN` -> `COMPLETED`. A interface exibe `CHECKED_IN` como "Check-in realizado" antes do início agendado e como "Em atendimento" quando o horário atual é igual ou posterior ao `startAt`. Esse "Em atendimento" é um status visual derivado; o valor persistido continua sendo `CHECKED_IN`.
+
+O check-in só é permitido para agendamentos `CONFIRMED`, dentro da janela de 60 minutos antes do `startAt` até o `endAt` previsto. A conclusão só é permitida para agendamentos `CHECKED_IN` quando o horário atual do servidor é igual ou posterior ao `startAt`. Agendamentos `COMPLETED`, `CANCELED` e `NO_SHOW` são estados fechados para novas transições operacionais, salvo regras explícitas já implementadas.
+
+## Busca De Clientes
+
+Clientes podem ser pesquisados por nome, e-mail ou telefone. Para telefone, o backend compara também uma versão normalizada apenas com dígitos usando PostgreSQL, então um cliente salvo como `(67) 2643-1365` pode ser encontrado por `672643`, `26431365` ou `6726431365`.
+
+Essa regra vale para a listagem de clientes e para o autocomplete remoto usado na agenda diária, mantendo paginação e limite de resultados.
 
 ## Calendário Profissional
 
