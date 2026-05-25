@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.hera.atendeja.dto.appointment.AppointmentResponse;
 import com.hera.atendeja.entity.AppointmentStatus;
 import com.hera.atendeja.exception.AppointmentConflictException;
+import com.hera.atendeja.exception.BusinessRuleException;
 import com.hera.atendeja.exception.ResourceNotFoundException;
 import com.hera.atendeja.service.AppointmentService;
 import java.time.Instant;
@@ -154,6 +155,17 @@ class AppointmentControllerTest {
     }
 
     @Test
+    void shouldReturnBusinessRuleErrorWhenCompletionIsInvalid() throws Exception {
+        when(appointmentService.complete(10L))
+                .thenThrow(new BusinessRuleException("Não é possível concluir um agendamento sem check-in."));
+
+        mockMvc.perform(patch("/api/v1/appointments/10/complete"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BUSINESS_RULE_VIOLATION"))
+                .andExpect(jsonPath("$.detail").value("Não é possível concluir um agendamento sem check-in."));
+    }
+
+    @Test
     void shouldMarkAppointmentNoShow() throws Exception {
         when(appointmentService.noShow(eq(10L), any())).thenReturn(appointmentResponse(AppointmentStatus.NO_SHOW));
 
@@ -279,6 +291,7 @@ class AppointmentControllerTest {
                 status == AppointmentStatus.CANCELED ? "Cliente solicitou cancelamento" : null,
                 null,
                 null,
+                status == AppointmentStatus.COMPLETED ? Instant.parse("2030-01-20T10:30:00Z") : null,
                 Instant.parse("2030-01-01T12:00:00Z"),
                 Instant.parse("2030-01-01T12:00:00Z")
         );

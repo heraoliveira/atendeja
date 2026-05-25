@@ -30,7 +30,12 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public Page<CustomerResponse> findAll(String search, Boolean active, Pageable pageable) {
-        return customerRepository.search(SearchNormalizer.toLikePattern(search), active, pageable)
+        return customerRepository.search(
+                        SearchNormalizer.toLikePattern(search),
+                        SearchNormalizer.toDigitsLikePattern(search),
+                        active,
+                        pageable
+                )
                 .map(customerMapper::toResponse);
     }
 
@@ -40,7 +45,11 @@ public class CustomerService {
         if (query == null || query.trim().length() < MIN_AUTOCOMPLETE_QUERY_LENGTH) {
             return Page.empty(limitedPageable);
         }
-        return customerRepository.searchActive(SearchNormalizer.toLikePattern(query), limitedPageable)
+        return customerRepository.searchActive(
+                        SearchNormalizer.toLikePattern(query),
+                        SearchNormalizer.toDigitsLikePattern(query),
+                        limitedPageable
+                )
                 .map(customerMapper::toResponse);
     }
 

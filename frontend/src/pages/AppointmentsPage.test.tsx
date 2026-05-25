@@ -2,6 +2,8 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cancelAppointment,
+  checkInAppointment,
+  completeAppointment,
   confirmAppointment,
   createAppointment,
   listAppointments,
@@ -45,6 +47,8 @@ vi.mock("../services/serviceCatalogService", () => ({
 }));
 
 const mockedCancelAppointment = vi.mocked(cancelAppointment);
+const mockedCheckInAppointment = vi.mocked(checkInAppointment);
+const mockedCompleteAppointment = vi.mocked(completeAppointment);
 const mockedConfirmAppointment = vi.mocked(confirmAppointment);
 const mockedCreateAppointment = vi.mocked(createAppointment);
 const mockedListAppointments = vi.mocked(listAppointments);
@@ -83,6 +87,8 @@ describe("AppointmentsPage", () => {
     setupSuccessfulLists();
     mockedCreateAppointment.mockResolvedValue(appointmentResponse({ id: 11 }));
     mockedConfirmAppointment.mockResolvedValue(appointmentResponse({ status: "CONFIRMED" }));
+    mockedCheckInAppointment.mockResolvedValue(appointmentResponse({ status: "CHECKED_IN" }));
+    mockedCompleteAppointment.mockResolvedValue(appointmentResponse({ status: "COMPLETED" }));
     mockedCancelAppointment.mockResolvedValue(appointmentResponse({ status: "CANCELED" }));
     mockedRescheduleAppointment.mockResolvedValue(appointmentResponse({
       startAt: "2030-01-20T15:00:00Z",
@@ -178,6 +184,80 @@ describe("AppointmentsPage", () => {
 
     await waitFor(() => expect(mockedConfirmAppointment).toHaveBeenCalledWith(10));
     expect(await screen.findByText("Agendamento confirmado com sucesso.")).toBeInTheDocument();
+  });
+
+  it("does not show complete action before appointment check-in", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2030-01-20T11:30:00Z").getTime());
+    mockedListAppointments.mockResolvedValue(pageResponse([appointmentResponse({ status: "CONFIRMED" })]));
+
+    renderWithProviders(<AppointmentsPage />);
+
+    await waitForAgendaRow();
+
+    expect(screen.getByRole("button", { name: /^check-in$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^concluir$/i })).not.toBeInTheDocument();
+  });
+
+  it("does not show check-in action before the allowed appointment window", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2030-01-20T10:30:00Z").getTime());
+    mockedListAppointments.mockResolvedValue(pageResponse([appointmentResponse({ status: "CONFIRMED" })]));
+
+    renderWithProviders(<AppointmentsPage />);
+
+    await waitForAgendaRow();
+
+    expect(screen.queryByRole("button", { name: /^check-in$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^concluir$/i })).not.toBeInTheDocument();
+  });
+
+  it("shows checked-in status before the scheduled start time", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2030-01-20T11:30:00Z").getTime());
+    mockedListAppointments.mockResolvedValue(pageResponse([appointmentResponse({ status: "CHECKED_IN" })]));
+
+    renderWithProviders(<AppointmentsPage />);
+
+    await waitForAgendaRow();
+
+    const row = screen.getByRole("row", { name: /Maria Cliente/ });
+    expect(within(row).getByText("Check-in realizado")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^concluir$/i })).not.toBeInTheDocument();
+  });
+
+  it("shows complete action after check-in and scheduled start time", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2030-01-20T12:15:00Z").getTime());
+    mockedListAppointments.mockResolvedValue(pageResponse([appointmentResponse({ status: "CHECKED_IN" })]));
+
+    renderWithProviders(<AppointmentsPage />);
+
+    await waitForAgendaRow();
+
+    const row = screen.getByRole("row", { name: /Maria Cliente/ });
+    expect(within(row).getByText("Em atendimento")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^concluir$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^check-in$/i })).not.toBeInTheDocument();
+  });
+
+  it("shows backend error when complete action is rejected", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2030-01-20T12:15:00Z").getTime());
+    mockedListAppointments.mockResolvedValue(pageResponse([appointmentResponse({ status: "CHECKED_IN" })]));
+    mockedCompleteAppointment.mockRejectedValueOnce(new ApiError(
+      "Não é possível concluir um agendamento antes do horário de início.",
+      400,
+      {
+        status: 400,
+        detail: "Não é possível concluir um agendamento antes do horário de início.",
+        code: "BUSINESS_RULE_VIOLATION"
+      }
+    ));
+
+    renderWithProviders(<AppointmentsPage />);
+
+    await waitForAgendaRow();
+    fireEvent.click(screen.getByRole("button", { name: /^concluir$/i }));
+
+    expect(await screen.findByText("Não é possível concluir um agendamento antes do horário de início."))
+      .toBeInTheDocument();
+    expect(mockedCompleteAppointment).toHaveBeenCalledWith(10);
   });
 
   it("submits reschedule and cancel operations from the dialog", async () => {

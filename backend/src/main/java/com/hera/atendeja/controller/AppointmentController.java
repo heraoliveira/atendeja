@@ -99,13 +99,13 @@ public class AppointmentController {
     }
 
     @PatchMapping("/{id}/check-in")
-    @Operation(summary = "Registra check-in em um agendamento confirmado")
+    @Operation(summary = "Registra check-in em um agendamento confirmado dentro da janela operacional")
     public AppointmentResponse checkIn(@PathVariable Long id) {
         return appointmentService.checkIn(id);
     }
 
     @PatchMapping("/{id}/complete")
-    @Operation(summary = "Conclui um agendamento confirmado ou com check-in")
+    @Operation(summary = "Conclui um agendamento com check-in")
     public AppointmentResponse complete(@PathVariable Long id) {
         return appointmentService.complete(id);
     }

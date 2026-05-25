@@ -21,6 +21,7 @@ import com.hera.atendeja.repository.ServiceCatalogRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,9 @@ public class AppointmentService {
             AppointmentStatus.CANCELED,
             AppointmentStatus.NO_SHOW
     );
+    private static final List<String> NON_BLOCKING_STATUS_NAMES = NON_BLOCKING_STATUSES.stream()
+            .map(Enum::name)
+            .toList();
 
     private static final Set<AppointmentStatus> CLOSED_STATUSES = Set.of(
             AppointmentStatus.COMPLETED,
@@ -47,6 +51,7 @@ public class AppointmentService {
 
     private static final Instant MIN_SEARCH_INSTANT = Instant.parse("1900-01-01T00:00:00Z");
     private static final Instant MAX_SEARCH_INSTANT = Instant.parse("9999-12-31T23:59:59Z");
+    private static final long CHECKIN_EARLY_MINUTES = 60L;
 
     private final AppointmentRepository appointmentRepository;
     private final CustomerRepository customerRepository;
@@ -179,9 +184,7 @@ public class AppointmentService {
         if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
             throw new BusinessRuleException("Somente agendamentos confirmados podem registrar check-in.");
         }
-        if (!businessTime.isCurrentBusinessDate(appointment.getStartAt())) {
-            throw new BusinessRuleException("Check-in só pode ser registrado no dia do agendamento.");
-        }
+        ensureCheckInWindow(appointment);
 
         appointment.setStatus(AppointmentStatus.CHECKED_IN);
         appointment.setCheckedInAt(businessTime.now());
@@ -191,12 +194,19 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse complete(Long id) {
         Appointment appointment = getById(id);
-        if (appointment.getStatus() != AppointmentStatus.CHECKED_IN
-                && appointment.getStatus() != AppointmentStatus.CONFIRMED) {
-            throw new BusinessRuleException("Somente agendamentos confirmados ou com check-in podem ser concluídos.");
+        if (CLOSED_STATUSES.contains(appointment.getStatus())) {
+            throw new BusinessRuleException("Agendamentos finalizados, cancelados ou com falta não podem alterar status.");
+        }
+        if (appointment.getStatus() != AppointmentStatus.CHECKED_IN) {
+            throw new BusinessRuleException("Não é possível concluir um agendamento sem check-in.");
+        }
+        Instant completedAt = businessTime.now();
+        if (completedAt.isBefore(appointment.getStartAt())) {
+            throw new BusinessRuleException("Não é possível concluir um agendamento antes do horário de início.");
         }
 
         appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointment.setCompletedAt(completedAt);
         return appointmentMapper.toResponse(appointment);
     }
 
@@ -222,10 +232,18 @@ public class AppointmentService {
                 startAt,
                 endAt,
                 ignoredAppointmentId,
-                NON_BLOCKING_STATUSES
+                NON_BLOCKING_STATUS_NAMES
         );
         if (hasConflict) {
             throw new AppointmentConflictException();
+        }
+    }
+
+    private void ensureCheckInWindow(Appointment appointment) {
+        Instant now = businessTime.now();
+        Instant checkInOpenAt = appointment.getStartAt().minus(Duration.ofMinutes(CHECKIN_EARLY_MINUTES));
+        if (now.isBefore(checkInOpenAt) || now.isAfter(appointment.getEndAt())) {
+            throw new BusinessRuleException("Check-in disponível apenas próximo ao horário agendado.");
         }
     }
 

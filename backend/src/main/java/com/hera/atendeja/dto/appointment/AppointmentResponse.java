@@ -19,6 +19,7 @@ public record AppointmentResponse(
         String cancelReason,
         String noShowReason,
         Instant checkedInAt,
+        Instant completedAt,
         Instant createdAt,
         Instant updatedAt
 ) {

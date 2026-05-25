@@ -44,6 +44,7 @@ public class AppointmentMapper {
                 appointment.getCancelReason(),
                 appointment.getNoShowReason(),
                 appointment.getCheckedInAt(),
+                appointment.getCompletedAt(),
                 appointment.getCreatedAt(),
                 appointment.getUpdatedAt()
         );

@@ -90,6 +90,7 @@ export function appointmentResponse(overrides: Partial<AppointmentResponse> = {}
     cancelReason: null,
     noShowReason: null,
     checkedInAt: null,
+    completedAt: null,
     createdAt: "2030-01-01T10:00:00Z",
     updatedAt: "2030-01-01T10:00:00Z",
     ...overrides
