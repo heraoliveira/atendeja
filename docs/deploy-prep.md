@@ -1,6 +1,6 @@
-# Deploy Real - AtendeJá
+# Deploy real - AtendeJá
 
-Este documento descreve a publicação inicial do AtendeJá com backend no Render, PostgreSQL gerenciado no Render e frontend na Vercel. Ele não contém secrets reais e não configura deploy automático por GitHub Actions.
+Este documento descreve a publicação do AtendeJá com backend no Render, PostgreSQL gerenciado no Render e frontend na Vercel. Ele não contém secrets reais e não configura deploy automático por GitHub Actions.
 
 ## Princípios
 
@@ -10,13 +10,13 @@ Este documento descreve a publicação inicial do AtendeJá com backend no Rende
 - Publicar backend e frontend separadamente, porque o frontend Vite precisa conhecer a URL pública da API no momento do build.
 - Usar domínio próprio apenas se desejar; não é obrigatório para a primeira publicação.
 
-## Contas Necessárias
+## Contas necessárias
 
 - GitHub, para hospedar o código, tags e releases.
 - Render, para PostgreSQL gerenciado e backend Java/Spring Boot.
 - Vercel, para frontend React + TypeScript.
 
-## Ordem Do Deploy
+## Ordem do deploy
 
 1. Criar PostgreSQL gerenciado no Render.
 2. Criar Web Service do backend no Render.
@@ -27,7 +27,7 @@ Este documento descreve a publicação inicial do AtendeJá com backend no Rende
 7. Atualizar `CORS_ALLOWED_ORIGINS` no backend com a URL pública da Vercel.
 8. Testar login, CRUDs, agenda, conflito de horários e dashboard.
 
-## PostgreSQL No Render
+## PostgreSQL no Render
 
 1. No Render, crie um novo PostgreSQL.
 2. Escolha a mesma região que será usada pelo backend, quando possível.
@@ -48,7 +48,7 @@ Flyway roda automaticamente na inicialização do backend. Se uma migration falh
 - Leia o log do Render para identificar a migration exata que falhou.
 - Não edite migrations já aplicadas em produção; crie uma nova migration corretiva.
 
-## Backend Spring Boot No Render
+## Backend Spring Boot no Render
 
 Opção recomendada para esta primeira publicação: Web Service conectado ao repositório GitHub.
 
@@ -95,7 +95,7 @@ URLs esperadas após o deploy:
 - OpenAPI JSON: `https://sua-api.onrender.com/v3/api-docs`.
 - Login: `POST https://sua-api.onrender.com/api/v1/auth/login`.
 
-## Frontend React + TypeScript Na Vercel
+## Frontend React + TypeScript na Vercel
 
 1. Na Vercel, importe o repositório GitHub.
 2. Configure:
@@ -106,9 +106,13 @@ URLs esperadas após o deploy:
    - Output directory: `dist`.
 3. Adicione a variável:
    - `VITE_API_BASE_URL=https://sua-api.onrender.com/api/v1`.
-4. Faça o deploy.
+4. Opcionalmente, configure as credenciais exibidas no painel demo do login:
+   - `VITE_DEMO_ADMIN_EMAIL=demo@atendeja.com`.
+   - `VITE_DEMO_ADMIN_PASSWORD=Demo@AtendeJa`.
+5. Faça o deploy.
 
 O Vite só expõe ao bundle variáveis com prefixo `VITE_`. Por isso, a URL da API precisa ser `VITE_API_BASE_URL`. O arquivo `frontend/vercel.json` direciona rotas internas da SPA para `index.html`, evitando erro ao recarregar páginas protegidas.
+Se o backend estiver com `DEMO_AUTH_USERS_ENABLED=true`, mantenha `VITE_DEMO_ADMIN_EMAIL` e `VITE_DEMO_ADMIN_PASSWORD` iguais aos valores de `DEMO_ADMIN_EMAIL` e `DEMO_ADMIN_PASSWORD` configurados no Render.
 
 Depois que a Vercel gerar a URL pública, volte ao Render e atualize:
 
@@ -118,7 +122,7 @@ CORS_ALLOWED_ORIGINS=https://seu-frontend.vercel.app
 
 Não inclua `/api/v1` em `CORS_ALLOWED_ORIGINS`; CORS usa apenas origem, com protocolo, host e porta.
 
-## Execução Local Preservada
+## Execução local preservada
 
 Na raiz:
 
@@ -161,13 +165,13 @@ Copy-Item .env.example .env
 
 ## Troubleshooting
 
-### Erro De CORS
+### Erro de CORS
 
 - Confirme se `CORS_ALLOWED_ORIGINS` no Render contém a URL exata da Vercel.
 - Não use `*` em produção.
 - Não inclua caminho `/api/v1` no CORS.
 
-### Erro De Conexão Com Banco
+### Erro de conexão com banco
 
 - Confirme se `DATABASE_URL` é JDBC.
 - Confirme usuário e senha.
@@ -179,27 +183,27 @@ Copy-Item .env.example .env
 - Confirme permissões do usuário.
 - Não altere migrations já aplicadas; crie uma nova migration.
 
-### Frontend Aponta Para Localhost
+### Frontend aponta para localhost
 
 - Confirme se `VITE_API_BASE_URL` foi configurada na Vercel antes do build.
 - Refaça o deploy do frontend após alterar a variável.
 
-### Backend Demora No Primeiro Acesso
+### Backend demora no primeiro acesso
 
 - Em plano gratuito, serviços podem dormir e acordar no primeiro request.
 
-### Erros 401 Ou 403
+### Erros 401 ou 403
 
 - Faça login novamente.
 - Verifique se o usuário existe, está ativo e tem a role esperada.
 
-### Erro 500 Por JWT
+### Erro 500 por JWT
 
 - Confirme `JWT_SECRET`.
 - Use pelo menos 32 caracteres.
 - Não deixe valor vazio em produção.
 
-## Fora Do Escopo Da Primeira Publicação
+## Fora do escopo do deploy manual
 
 - Deploy automático por GitHub Actions.
 - Domínio customizado.
@@ -207,7 +211,7 @@ Copy-Item .env.example .env
 - Rotação automática de secrets.
 - Ambientes separados de homologação e produção.
 
-## Referências Oficiais
+## Referências oficiais
 
 - Render Web Services: https://render.com/docs/web-services
 - Render Postgres: https://render.com/docs/databases
