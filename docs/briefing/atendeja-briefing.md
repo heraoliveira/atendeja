@@ -1,38 +1,53 @@
-# Briefing Técnico - AtendeJá
+# Briefing do produto - AtendeJá
 
-## Visão geral
+## Resumo
 
-O AtendeJá é uma aplicação full stack para agenda e fila de atendimento de prestadores locais. O sistema deve permitir cadastrar clientes, profissionais e serviços, criar e remarcar agendamentos, registrar check-in, concluir atendimentos, marcar faltas e consultar a agenda diária com filtros.
+AtendeJá é uma aplicação full stack para prestadores locais que precisam organizar agenda, fila de atendimento e indicadores básicos de operação diária.
 
-## Público-alvo
+O sistema atende negócios como clínicas pequenas, barbearias, salões, consultórios e assistências técnicas com atendimento por horário.
 
-- Clínicas pequenas.
-- Barbearias.
-- Salões.
-- Consultórios.
-- Assistências técnicas.
+## Problema
 
-## Problema resolvido
+Prestadores locais costumam perder produtividade por conflitos de agenda, remarcações mal registradas, falta de controle de status do atendimento e baixa visibilidade da ocupação diária.
 
-O projeto resolve problemas recorrentes de agenda operacional: conflito de horários, falta de controle de remarcações, cancelamentos sem rastreabilidade e pouca visibilidade da ocupação diária.
+## Proposta
 
-## Regra central
+O AtendeJá centraliza clientes, profissionais, serviços e agendamentos em uma experiência web simples. A aplicação valida conflitos por profissional, registra o avanço operacional dos atendimentos e apresenta um dashboard diário para acompanhamento.
 
-Um profissional não pode possuir dois agendamentos ativos em intervalos sobrepostos. A regra será implementada no backend, testada com banco real e documentada na API.
+## Usuários
 
-## Idioma e convenções
+- `ADMIN`: gerencia cadastros, profissionais, serviços, calendário e agenda.
+- `ATTENDANT`: opera clientes, agenda, check-in, conclusão e dashboard.
 
-- Código, banco, endpoints, payloads e identificadores técnicos em inglês.
-- Interface, mensagens visíveis e README principal em português PT-BR.
-- Datas, horários, moeda e exemplos exibidos ao usuário seguindo convenções brasileiras.
+## Capacidades do produto
 
-## Entregáveis esperados
+- Autenticação com JWT.
+- Gestão de clientes, profissionais e serviços.
+- Agenda diária com filtros.
+- Criação, remarcação e cancelamento de agendamentos.
+- Validação de conflito de horários por profissional.
+- Check-in, conclusão e registro de no-show.
+- Calendário profissional com disponibilidade e exceções.
+- Dashboard diário com ocupação, cancelamentos e faltas.
+- Frontend responsivo em português brasileiro.
 
-- Backend Spring Boot.
-- Frontend React.
-- PostgreSQL com migrations Flyway.
-- Docker Compose.
-- Testes automatizados.
-- Swagger/OpenAPI.
-- README em português PT-BR.
-- ADRs com decisões técnicas principais.
+## Diferenciais técnicos
+
+- Regras de negócio concentradas no backend.
+- Persistência relacional com PostgreSQL e Flyway.
+- Validação de conflitos com intervalo semiaberto.
+- Bloqueio pessimista por profissional para reduzir risco de concorrência.
+- Testes automatizados de backend e frontend.
+- Testcontainers para validar PostgreSQL real.
+- Docker Compose para execução local completa.
+
+## Stack
+
+- Backend: Java 17, Spring Boot, Spring Security, JPA, Flyway e PostgreSQL.
+- Frontend: React, TypeScript, Vite, React Router e React Hook Form.
+- Qualidade: JUnit, Mockito, MockMvc, Testcontainers, Vitest e React Testing Library.
+- Infraestrutura: Docker, Docker Compose, GitHub Actions, Render e Vercel.
+
+## Escopo atual
+
+A versão atual entrega uma aplicação funcional para demonstração e avaliação técnica. Melhorias futuras podem incluir domínio próprio, observabilidade avançada, refresh token, recuperação de senha e automação de deploy com secrets de provedores.

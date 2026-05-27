@@ -56,6 +56,19 @@ describe("LoginPage", () => {
     });
   });
 
+  it("shows demo credentials and fills the login form", () => {
+    renderLoginPage();
+
+    expect(screen.getByRole("heading", { name: /acesso de demonstração/i })).toBeInTheDocument();
+    expect(screen.getByText("demo@atendeja.com")).toBeInTheDocument();
+    expect(screen.getByText("Demo@AtendeJa")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /usar conta demo/i }));
+
+    expect(screen.getByLabelText(/^e-mail$/i)).toHaveValue("demo@atendeja.com");
+    expect(screen.getByLabelText(/^senha$/i)).toHaveValue("Demo@AtendeJa");
+  });
+
   it("preserves the protected target requested before authentication", async () => {
     mockedLogin.mockResolvedValue(loginResponse({ role: "ATTENDANT", email: "attendant@atendeja.local" }));
 

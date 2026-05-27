@@ -10,9 +10,9 @@ O AtendeJá precisa demonstrar uma aplicação full stack de portfólio com dom�
 
 ## Decisão
 
-Usar monorepo com uma fundação backend evolutiva.
+Usar monorepo com backend Spring Boot, frontend React e documentação técnica versionada junto ao código.
 
-Stack implementada até a Fase 7:
+Stack consolidada:
 
 - Backend em Java 17 + Spring Boot.
 - Build backend com Maven e Maven Wrapper.
@@ -32,10 +32,7 @@ Stack implementada até a Fase 7:
 - Imagens Docker multi-stage para backend e frontend.
 - CI com GitHub Actions para testes, build e validação Docker.
 - Documentação em README, Swagger/OpenAPI e ADRs.
-
-Stack planejada para fases futuras:
-
-- Deploy real em provedor externo e automação de CD após configuração segura de secrets.
+- Deploy preparado para Render, PostgreSQL gerenciado no Render e Vercel.
 
 ## Consequências
 
@@ -43,4 +40,4 @@ Stack planejada para fases futuras:
 - A regra de negócio fica concentrada em services, não em controllers.
 - O PostgreSQL permite testar consultas, índices e constraints em ambiente real.
 - O monorepo facilita execução local e apresentação em portfólio.
-- Tecnologias ainda não implementadas ficam documentadas como planejamento, sem sugerir entrega prematura.
+- Deploy automático e observabilidade avançada podem ser adicionados sem alterar a arquitetura principal.

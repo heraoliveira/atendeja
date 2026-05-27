@@ -6,7 +6,7 @@ Aceita.
 
 ## Contexto
 
-As operações de cadastro e agenda do AtendeJá precisam deixar de ficar públicas antes que o backend avance para dashboard e frontend.
+As operações de cadastro, agenda e dashboard do AtendeJá precisam ser protegidas por autenticação e autorização por perfil.
 
 ## Decisão
 
@@ -22,5 +22,5 @@ Usar Spring Security como Resource Server JWT com tokens Bearer emitidos pelo pr
 ## Consequências
 
 - Access tokens expiram e devem ser reenviados como `Authorization: Bearer <accessToken>`.
-- Usuário inativo não consegue fazer novo login; tokens já emitidos continuam válidos até expirar nesta fase.
-- Refresh token, cadastro público, recuperação de senha e frontend ficam fora desta decisão.
+- Usuário inativo não consegue fazer novo login; tokens já emitidos continuam válidos até expirar.
+- Refresh token, cadastro público e recuperação de senha ficam fora desta decisão.

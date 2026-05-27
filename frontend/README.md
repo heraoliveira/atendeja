@@ -1,78 +1,59 @@
 # Frontend AtendeJá
 
-Aplicação web da Fase 5 do AtendeJá, fortalecida na Fase 6 com testes automatizados em Vitest e React Testing Library e empacotada na Fase 7 com Docker e Nginx.
+Aplicação web do AtendeJá, construída com React, TypeScript e Vite.
 
-## Status Atual
+## Visão geral
 
-Implementado:
+O frontend entrega a experiência operacional do sistema: login, dashboard diário, agenda, clientes, profissionais e serviços. A interface consome a API Spring Boot, protege rotas autenticadas e exibe mensagens em português brasileiro.
 
-- Login consumindo `POST /api/v1/auth/login`.
-- Armazenamento simples do Bearer Token em `localStorage`.
+Principais recursos:
+
+- Login com Bearer Token.
+- Painel de acesso demo com preenchimento automático.
 - Rotas protegidas por autenticação.
-- Logout e tratamento de respostas `401` e `403`.
-- Cliente HTTP centralizado com `VITE_API_BASE_URL`.
-- Dashboard diário consumindo `GET /api/v1/dashboard/daily`.
-- Agenda diária com filtros, paginação, criação, remarcação, cancelamento, ações operacionais e status visual derivado "Em atendimento".
-- Busca remota de clientes por nome, e-mail e telefone normalizado.
-- CRUDs funcionais de clientes, profissionais e serviços.
-- Restrições visuais por role para ações administrativas.
-- Mensagens, labels, filtros e feedback em português PT-BR.
-- Testes automatizados para login, logout, rotas protegidas, cliente HTTP, dashboard, agenda e formulários principais.
-- Dockerfile multi-stage para gerar o build estático e servir com Nginx.
+- Dashboard diário com filtros.
+- Agenda diária com filtros, paginação e ações operacionais.
+- CRUD de clientes, profissionais e serviços.
+- Busca remota de clientes por nome, e-mail e telefone.
+- Tratamento de erros `400`, `401`, `403` e `409`.
+- Layout responsivo.
 
-Não implementado nesta fase:
+## Stack
 
-- Refresh token.
-- Cadastro público.
-- Recuperação de senha.
-- Frontend para disponibilidade profissional.
-- Deploy automático.
-
-## Pré-Requisitos
-
-- Node.js 22 ou compatível com Vite 7.
-- API Spring Boot em execução.
-- Usuários locais criados pelo backend com `DEMO_AUTH_USERS_ENABLED=true`.
-- Docker Desktop ou Docker Engine com Docker Compose para execução conteinerizada.
+- React.
+- TypeScript.
+- Vite.
+- React Router.
+- React Hook Form.
+- Lucide React.
+- Vitest e React Testing Library.
 
 ## Configuração
 
-Crie o arquivo de ambiente do frontend:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-No Linux/macOS:
-
-```bash
-cp .env.example .env
-```
-
-Variável disponível:
+Variáveis lidas pelo Vite:
 
 | Variável | Uso |
 |---|---|
-| `VITE_API_BASE_URL` | URL base da API Spring Boot consumida pelo browser. |
+| `VITE_API_BASE_URL` | URL base versionada da API. |
+| `VITE_DEMO_ADMIN_EMAIL` | E-mail exibido no painel demo. |
+| `VITE_DEMO_ADMIN_PASSWORD` | Senha exibida no painel demo. |
 
-Valor local padrão:
+Exemplo local:
 
 ```text
 VITE_API_BASE_URL=http://localhost:8080/api/v1
+VITE_DEMO_ADMIN_EMAIL=demo@atendeja.com
+VITE_DEMO_ADMIN_PASSWORD=Demo@AtendeJa
 ```
 
-O backend deve permitir a origem do Vite em `CORS_ALLOWED_ORIGINS`, por exemplo:
-
-```text
-CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
+Se a conta demo for alterada no backend, mantenha `VITE_DEMO_ADMIN_EMAIL` e `VITE_DEMO_ADMIN_PASSWORD` com os mesmos valores usados em `DEMO_ADMIN_EMAIL` e `DEMO_ADMIN_PASSWORD`.
 
 ## Comandos
 
 Instalar dependências:
 
 ```bash
-npm install
+npm ci
 ```
 
 Rodar em desenvolvimento:
@@ -81,29 +62,29 @@ Rodar em desenvolvimento:
 npm run dev
 ```
 
-Build de produção:
-
-```bash
-npm run build
-```
-
-Testes automatizados:
+Executar testes:
 
 ```bash
 npm test
 ```
 
-A suíte cobre utilitários, cliente HTTP, autenticação, rotas protegidas, dashboard, agenda e formulários de clientes, profissionais e serviços.
-
-Rodar pelo Docker Compose completo, a partir da raiz do repositório:
+Gerar build de produção:
 
 ```bash
-docker compose up --build
+npm run build
 ```
 
-No Docker local, o frontend fica em `http://localhost:5173` e consome a API configurada em `VITE_API_BASE_URL`.
+## Integração com a API
 
-## Deploy Na Vercel
+O cliente HTTP centralizado usa `VITE_API_BASE_URL`, injeta o token quando há sessão válida e limpa a sessão ao receber `401`. Erros da API são exibidos com mensagens amigáveis ao usuário.
+
+O backend deve permitir a origem do frontend via `CORS_ALLOWED_ORIGINS`. Para desenvolvimento local, use:
+
+```text
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+```
+
+## Deploy na Vercel
 
 Configuração recomendada:
 
@@ -112,22 +93,10 @@ Configuração recomendada:
 - Build command: `npm run build`.
 - Output directory: `dist`.
 - Variável obrigatória: `VITE_API_BASE_URL=https://sua-api.onrender.com/api/v1`.
-
-O Vite expõe ao bundle apenas variáveis com prefixo `VITE_`. Após publicar o frontend, configure no backend `CORS_ALLOWED_ORIGINS` com a URL pública da Vercel, sem caminho `/api/v1`.
+- Variáveis opcionais: `VITE_DEMO_ADMIN_EMAIL` e `VITE_DEMO_ADMIN_PASSWORD`.
 
 O arquivo `vercel.json` mantém fallback de rotas SPA para `index.html`, evitando erro ao recarregar páginas internas.
 
-## Fluxos Disponíveis
+## Testes cobertos
 
-- Entrar com e-mail e senha de usuário existente.
-- Consultar dashboard diário por data e profissional.
-- Listar agenda diária com filtros por data, profissional, cliente, serviço e status.
-- Buscar cliente por nome, e-mail ou telefone sem máscara ao filtrar e criar agendamentos.
-- Criar agendamento com cliente, profissional, serviço e horário inicial.
-- Remarcar, cancelar, confirmar, registrar check-in, concluir e marcar falta quando a API permitir.
-- Exibir "Check-in realizado" antes do início agendado e "Em atendimento" quando o agendamento com check-in já alcançou o horário inicial.
-- Criar, editar, listar e inativar clientes.
-- Criar, editar, listar e inativar profissionais como `ADMIN`.
-- Criar, editar, listar e inativar serviços como `ADMIN`.
-
-As regras de negócio continuam no backend. O frontend apenas orienta a experiência e mostra feedback em português PT-BR.
+A suíte cobre login, logout, rotas protegidas, cliente HTTP, dashboard, agenda diária, autocomplete de clientes e formulários principais.
